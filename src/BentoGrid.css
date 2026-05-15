@@ -1,0 +1,119 @@
+/* Container for the whole grid */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(180px, auto);
+    gap: 24px;
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+    font-family: sans-serif;
+}
+
+/* Base style for every card */
+.bento-card {
+    background-color: #ffffff;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.bento-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+}
+
+.bento-card h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.5rem;
+    color: #111;
+}
+
+.bento-card p {
+    margin: 0;
+    color: #555;
+    line-height: 1.6;
+}
+
+/* --- Card Specific Layouts (The Puzzle Pieces) --- */
+
+/* Card 1: Intro (Spans 2 columns, 2 rows) */
+.card-intro {
+    grid-column: span 2;
+    grid-row: span 2;
+    background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
+    /* Soft watercolor feel */
+}
+
+.card-intro h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+.card-intro p {
+    font-size: 1.1rem;
+}
+
+/* Card 2: Highlight App (Spans 2 columns, 1 row) */
+.card-highlight {
+    grid-column: span 2;
+    grid-row: span 1;
+}
+
+/* Card 3: Toolkit (Spans 1 column, 1 row) */
+.card-toolkit {
+    grid-column: span 1;
+    grid-row: span 1;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.tag {
+    background: #f0f0f0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Card 5: Sandbox (Spans 1 column, 1 row) */
+.card-sandbox {
+    grid-column: span 1;
+    grid-row: span 1;
+}
+
+/* Card 4: Deep Dive (Spans all 4 columns, 1 row) */
+.card-deep-dive {
+    grid-column: span 4;
+    grid-row: span 1;
+    background-color: #fafafa;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 800px) {
+    .bento-grid {
+        grid-template-columns: 1fr;
+        /* Stacks everything into 1 column */
+    }
+
+    /* Reset spans for mobile so they just take up standard rows */
+    .card-intro,
+    .card-highlight,
+    .card-toolkit,
+    .card-sandbox,
+    .card-deep-dive {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+}

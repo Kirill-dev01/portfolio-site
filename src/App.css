@@ -1,0 +1,595 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+/* Resetting the page to be a full-screen dark terminal */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  background-color: #050505;
+  /* Matches your retro theme */
+  color: #33ff00;
+}
+
+
+.retro-layout {
+  display: flex;
+  min-height: 100vh;
+  /* <-- THE FIX: Now it can stretch downwards! */
+  background: #050505;
+}
+
+/* The Vertical Sidebar */
+.sidebar {
+  width: 250px;
+  border-right: 2px solid #33ff00;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background-color: #111;
+}
+
+.sidebar h1 {
+  font-size: 2rem;
+  margin-top: 0;
+  margin-bottom: 30px;
+  text-align: center;
+  border-bottom: 1px dashed #33ff00;
+  padding-bottom: 10px;
+}
+
+/* Retro Buttons */
+.menu-button {
+  background: transparent;
+  border: 1px solid #33ff00;
+  color: #33ff00;
+  font-family: 'VT323', monospace;
+  font-size: 1.4rem;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  text-transform: uppercase;
+  transition: all 0.1s ease-in-out;
+}
+
+.menu-button:hover {
+  background: #33ff00;
+  color: #0a0a0a;
+  font-weight: bold;
+}
+
+/* The Main Content Area */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+
+  /* CHANGE: This moves the content to the top instead of the middle */
+  justify-content: flex-start;
+  align-items: center;
+
+  /* NEW: This pushes it down just a bit so it aligns nicely with your SYS_MENU */
+  padding-top: 60px;
+
+  position: relative;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 3px 100%;
+}
+
+/* The new ASCII Dragon style */
+.ascii-dragon {
+  font-family: 'VT323', monospace;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  margin: 0;
+  text-shadow: 0 0 8px #33ff00;
+}
+
+/* The KIRILL_OS text below the dragon */
+.os-title {
+  font-size: 3.5rem;
+  margin-top: 20px;
+  border: 2px dashed #33ff00;
+  padding: 10px 30px;
+  background-color: #000;
+  animation: blink 2s infinite;
+}
+
+/* A classic retro blinking cursor effect */
+@keyframes blink {
+
+  0%,
+  49% {
+    border-color: #33ff00;
+  }
+
+  50%,
+  100% {
+    border-color: transparent;
+  }
+}
+
+/* --- Tech News Screen Styles --- */
+/* --- Tech News Screen Styles --- */
+.news-container {
+  width: 80%;
+  max-width: 800px;
+
+  /* NEW: These two lines break it out of the center and move it left */
+  align-self: flex-start;
+  margin-left: 20px;
+
+  /* Keep the rest of your flexbox code the same */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #33ff00;
+  padding: 40px;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.news-container h2 {
+  border-bottom: 1px dashed #33ff00;
+  padding-bottom: 10px;
+  margin-top: 0;
+  text-align: center;
+}
+
+.news-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  /* Centers the list itself */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.news-list li {
+  margin-bottom: 15px;
+  width: 100%;
+  text-align: center;
+  /* Forces the text to the middle */
+}
+
+.news-link {
+  color: #33ff00;
+  text-decoration: none;
+  font-size: 1.3rem;
+  /* inline-block makes it wrap the text tightly for better hover effects */
+  display: inline-block;
+  padding: 5px 15px;
+  transition: all 0.2s;
+}
+
+.news-link:hover {
+  background-color: #33ff00;
+  color: #000;
+  font-weight: bold;
+}
+
+/* =========================================
+   MODERN PORTFOLIO STYLES (THE MATRIX SHIFT)
+   ========================================= */
+
+/* The new, non-terminal wrapper */
+.modern-layout {
+  height: 100vh;
+  width: 100vw;
+  background-color: #f4f4f9;
+  /* A clean, light off-white */
+  /* We will add the watercolor background image right here later! */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #333;
+  position: relative;
+}
+
+/* The "Way Home" Button */
+.return-button {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  z-index: 9999;
+  /* <--- ADD THIS LINE to fix the click */
+  padding: 10px 20px;
+  background: #111;
+  color: #33ff00;
+  border: 1px solid #33ff00;
+  font-family: 'VT323', monospace;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.return-button:hover {
+  background: #33ff00;
+  color: #000;
+  font-weight: bold;
+}
+
+/* The Modern Bento Grid */
+.bento-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 25px;
+  max-width: 1000px;
+  width: 90%;
+}
+
+/* The individual cards */
+.bento-card {
+  background: rgba(255, 255, 255, 0.85);
+  /* Slightly transparent white */
+  backdrop-filter: blur(12px);
+  /* Creates a frosted glass effect */
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.bento-card:hover {
+  transform: translateY(-5px);
+}
+
+.bento-card h2 {
+  margin-top: 0;
+  font-size: 1.8rem;
+  color: #111;
+  border-bottom: none;
+  /* Removing the retro dashed borders */
+}
+
+/* Grid Placement */
+.bento-info {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+  /* Makes the info box span both rows, making it big */
+}
+
+.bento-stack {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+}
+
+.bento-contacts {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+}
+
+/* Modern Tags */
+.tech-tag {
+  display: inline-block;
+  background-color: #eee;
+  color: #333;
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin: 5px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* =========================================
+   CURRENT PROJECTS STYLES (MOVING BUBBLES)
+   ========================================= */
+
+/* The overall container for the project screen */
+.projects-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  /* Essential for bubble positioning */
+  overflow: hidden;
+  /* Prevents bubbles from floating off the screen and creating scrollbars */
+}
+
+/* Modern title for the data screen */
+.projects-title {
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 300;
+  /* Light weight looks modern */
+  color: #111;
+  margin-top: 80px;
+  text-align: center;
+}
+
+/* The base style for every project bubble */
+.project-bubble {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #111;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  border-radius: 50%;
+  /* Makes it a perfect circle */
+
+  /* Flexbox to keep text in the dead center */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+
+  /* Modern interaction */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+/* Hover effect: Glow and slight grow */
+.project-bubble:hover {
+  transform: scale(1.05) !important;
+  /* Scale overrides the animation transform briefly */
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 1);
+  z-index: 20;
+  /* Pops to the front on hover */
+}
+
+/* --- THE MOVEMENT (Animations) --- */
+
+/* Bubble 1 Animation (Example: chaos-organizer) */
+@keyframes float1 {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  33% {
+    transform: translate(60px, -80px);
+  }
+
+  66% {
+    transform: translate(-30px, -40px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* Bubble 2 Animation (Example: nihongo-quest) */
+@keyframes float2 {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  25% {
+    transform: translate(-50px, -100px);
+  }
+
+  50% {
+    transform: translate(40px, -60px);
+  }
+
+  75% {
+    transform: translate(-10px, 40px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* Bubble 3 Animation (Example: bosa-noga) */
+@keyframes float3 {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(120px, -30px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* =========================================
+   DETECTIVE BOARD STYLES (FINISHED PROJECTS)
+   ========================================= */
+
+.board-wrapper {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 40px;
+  z-index: 10;
+}
+
+/* The Grid Board */
+.detective-board {
+  position: relative;
+  width: 100%;
+  height: 450px;
+  background-color: #fdfdfd;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.02), 0 10px 30px rgba(0, 0, 0, 0.05);
+  /* Creates the graphing paper / grid look */
+  background-image:
+    linear-gradient(#e5e5e5 1px, transparent 1px),
+    linear-gradient(90deg, #e5e5e5 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow: hidden;
+}
+
+/* The SVG Layer for Evidence Strings */
+.evidence-strings {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Let clicks pass through the lines to the nodes below */
+  z-index: 1;
+}
+
+/* The Project Nodes */
+.case-node {
+  position: absolute;
+  width: 140px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  transform: translate(-50%, -50%);
+  /* Centers the node perfectly on its coordinates */
+}
+
+.case-node:hover {
+  transform: translate(-50%, -50%) scale(1.05) rotate(2deg);
+  box-shadow: 4px 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.case-node.selected {
+  border-color: #ea4335;
+  /* Red selection border */
+  box-shadow: 0 0 0 4px rgba(234, 67, 53, 0.2);
+}
+
+.case-title {
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #111;
+  margin-bottom: 5px;
+}
+
+.case-type {
+  font-size: 0.7rem;
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #555;
+}
+
+/* The Open Folder Details Area */
+.case-details-panel {
+  width: 100%;
+  min-height: 180px;
+  background: #f4f4f9;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.empty-case {
+  color: #aaa;
+  font-size: 1.5rem;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-case-content {
+  width: 100%;
+  text-align: left;
+}
+
+.active-case-content h2 {
+  margin-top: 0;
+  color: #111;
+  border-bottom: 2px solid #111;
+  padding-bottom: 10px;
+}
+
+/* --- Evidence Locker (Bottom List) --- */
+.evidence-locker {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  padding: 20px;
+  background: #ebebeb;
+  border: 1px dashed #aaa;
+  border-radius: 8px;
+  margin-top: 10px;
+  min-height: 80px;
+}
+
+.locker-file {
+  padding: 12px 24px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 4px;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 2px 4px 0px #ccc;
+  transition: all 0.1s;
+}
+
+.locker-file:hover {
+  transform: translateY(2px);
+  box-shadow: 0px 2px 0px #ccc;
+  background: #ea4335;
+  /* Red accent */
+  color: white;
+  border-color: #ea4335;
+}
+
+/* --- Tech Stack Nodes (Spawns on board) --- */
+.tech-node {
+  position: absolute;
+  padding: 6px 14px;
+  background: #111;
+  color: #33ff00;
+  /* Hacker green text */
+  border: 1px solid #33ff00;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-family: 'VT323', monospace;
+  text-transform: uppercase;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* Bouncy spawn animation */
+}
+
+@keyframes popIn {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Add a pulse to the main node when it's clicked */
+.case-node.expanded {
+  border-color: #ea4335;
+  box-shadow: 0 0 0 4px rgba(234, 67, 53, 0.2);
+}
