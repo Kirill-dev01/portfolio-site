@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import TacticalGame from './components/games/TacticalGame';
 import SnakeGame from './components/games/SnakeGame';
@@ -129,13 +129,11 @@ const CurrentProjects = () => {
   );
 };
 
-// --- C. Detective Board Component (Draggable AND Spawning) ---
 const DetectiveBoard = () => {
-  // All raw project data
   const allProjects = [
     {
       id: 1, title: "Nihongo Quest", type: "EXE // Mobile",
-      x: 30, y: 40, // Base coordinates when first pinned
+      x: 30, y: 40,
       stack: ["Kotlin", "Offline-First", "Mobile UI"]
     },
     {
@@ -150,39 +148,30 @@ const DetectiveBoard = () => {
     }
   ];
 
-  // --- MERGED STATE ---
-  const [availableProjects, setAvailableProjects] = useState(allProjects); // In locker
-  const [pinnedProjects, setPinnedProjects] = useState([]);                // On board
-  const [expandedNodes, setExpandedNodes] = useState([]);                  // Showing tech stack
-  const [draggingId, setDraggingId] = useState(null);                      // Currently being dragged
+  const [availableProjects, setAvailableProjects] = useState(allProjects);
+  const [pinnedProjects, setPinnedProjects] = useState([]);
+  const [expandedNodes, setExpandedNodes] = useState([]);
+  const [draggingId, setDraggingId] = useState(null);
   const boardRef = React.useRef(null);
 
-  // --- ACTIONS ---
-  // 1. Move from locker to board
   const pinToBoard = (project) => {
     setAvailableProjects(prev => prev.filter(p => p.id !== project.id));
     setPinnedProjects(prev => [...prev, project]);
   };
 
-  // 2. Toggle the tech stack spawn
   const toggleTechStack = (projectId) => {
     setExpandedNodes(prev =>
       prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId]
     );
   };
 
-  // 3. Dragging logic (Updates the position of PINNED projects)
   const handleMouseMove = (e) => {
     if (!draggingId || !boardRef.current) return;
-
     const boardRect = boardRef.current.getBoundingClientRect();
     let newX = ((e.clientX - boardRect.left) / boardRect.width) * 100;
     let newY = ((e.clientY - boardRect.top) / boardRect.height) * 100;
-
-    // Keep inside boundaries
     newX = Math.max(5, Math.min(95, newX));
     newY = Math.max(5, Math.min(95, newY));
-
     setPinnedProjects(prev => prev.map(p =>
       p.id === draggingId ? { ...p, x: newX, y: newY } : p
     ));
@@ -190,7 +179,6 @@ const DetectiveBoard = () => {
 
   const stopDragging = () => setDraggingId(null);
 
-  // Helper to place tech nodes in a circle
   const getTechNodePosition = (baseX, baseY, index, total) => {
     const angle = (index / total) * Math.PI * 2;
     const radius = 18;
@@ -203,8 +191,6 @@ const DetectiveBoard = () => {
   return (
     <div className="board-wrapper">
       <h1 className="projects-title">Archive // Solved_Cases</h1>
-
-      {/* THE BOARD */}
       <div
         className="detective-board"
         ref={boardRef}
@@ -212,12 +198,9 @@ const DetectiveBoard = () => {
         onMouseUp={stopDragging}
         onMouseLeave={stopDragging}
       >
-
-        {/* Step 1: Draw the evidence strings for expanded tech stacks */}
         <svg className="evidence-strings">
           {pinnedProjects.map((project) => {
             if (!expandedNodes.includes(project.id)) return null;
-
             return project.stack.map((tech, index) => {
               const pos = getTechNodePosition(project.x, project.y, index, project.stack.length);
               return (
@@ -232,11 +215,8 @@ const DetectiveBoard = () => {
           })}
         </svg>
 
-        {/* Step 2: Render Pinned Projects & Their Tech Stacks */}
         {pinnedProjects.map((project) => (
           <React.Fragment key={`group-${project.id}`}>
-
-            {/* The Main Project Node */}
             <div
               className={`case-node ${expandedNodes.includes(project.id) ? 'expanded' : ''}`}
               style={{
@@ -244,14 +224,13 @@ const DetectiveBoard = () => {
                 top: `${project.y}%`,
                 cursor: draggingId === project.id ? 'grabbing' : 'grab'
               }}
-              onMouseDown={() => setDraggingId(project.id)} // Starts Drag
-              onClick={() => toggleTechStack(project.id)}   // Spawns Tech Stack
+              onMouseDown={() => setDraggingId(project.id)}
+              onClick={() => toggleTechStack(project.id)}
             >
               <div className="case-title">{project.title}</div>
               <div className="case-type">{project.type}</div>
             </div>
 
-            {/* The Spawning Tech Nodes */}
             {expandedNodes.includes(project.id) && project.stack.map((tech, index) => {
               const pos = getTechNodePosition(project.x, project.y, index, project.stack.length);
               return (
@@ -268,7 +247,6 @@ const DetectiveBoard = () => {
         ))}
       </div>
 
-      {/* THE EVIDENCE LOCKER */}
       <div className="evidence-locker">
         {availableProjects.length === 0 ? (
           <span style={{ color: '#888', fontStyle: 'italic', alignSelf: 'center' }}>
@@ -294,22 +272,18 @@ const DetectiveBoard = () => {
 // ARCADE GAMES
 // =========================================
 
-// --- 0. The Main Arcade Hub ---
 const ArcadeMenu = ({ setCurrentView }) => {
   return (
     <div className="arcade-menu">
       <div className="game-title">
         <Typewriter text="KIRILL_OS // ENTERTAINMENT_SYSTEM" speed={50} />
       </div>
-
       <button className="menu-button" style={{ fontSize: '2rem' }} onClick={() => setCurrentView('GAME_TACTICAL')}>
         <Typewriter text="[01] TACTICAL_STRIKE (Turn-Based)" delay={500} />
       </button>
-
       <button className="menu-button" style={{ fontSize: '2rem' }} onClick={() => setCurrentView('GAME_CONQUEST')}>
         <Typewriter text="[02] SECTOR_CONQUEST (Auto-Sim)" delay={1000} />
       </button>
-
       <button className="menu-button" style={{ fontSize: '2rem', color: '#555', borderColor: '#555', cursor: 'not-allowed' }}>
         <Typewriter text="[03] CYBER_PONG (In Development)" delay={1500} />
       </button>
@@ -324,6 +298,57 @@ const ArcadeMenu = ({ setCurrentView }) => {
 
 function App() {
   const [currentView, setCurrentView] = useState('HOME');
+  const [activeRoom, setActiveRoom] = useState(null);
+
+  // --- 📡 MULTIPLAYER WEBSOCKET ENGINE ---
+  const ws = useRef(null);
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    // ONLY connect if they opened the game AND they have a room code
+    if (currentView === 'GAME_TACTICAL' && activeRoom) {
+
+      // We inject the activeRoom code right into the URL!
+      ws.current = new WebSocket(`wss://tactical-multiplayer-server.onrender.com/ws/match/${activeRoom}`);
+
+      ws.current.onopen = () => {
+        console.log(`SYS: Connected to Secure Room: ${activeRoom}`);
+        setIsOnline(true);
+      };
+
+      ws.current.onmessage = (event) => {
+        const incomingData = JSON.parse(event.data);
+        console.log("SATELLITE INTERCEPT:", incomingData);
+
+        // --- ADD IT RIGHT HERE! ---
+        window.dispatchEvent(new MessageEvent("tactical_server_msg", { data: event.data }));
+      };
+
+      ws.current.onclose = () => {
+        console.log("SYS: Connection Lost");
+        setIsOnline(false);
+      };
+
+      // Cleanup: disconnect when leaving the game screen
+      return () => {
+        if (ws.current) {
+          ws.current.close();
+        }
+      };
+    }
+  }, [currentView, activeRoom]);
+
+  // Transmission function to send moves to the Python server
+  // --- UNIVERSAL TRANSMISSION ENGINE ---
+  const transmitData = (payloadData) => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(payloadData));
+      console.log("Transmitted Payload:", payloadData.action);
+    } else {
+      console.log("ERROR: No server connection!");
+    }
+  };
+  // ----------------------------------------
 
   if (currentView === 'PORTFOLIO' || currentView === 'CURRENT_PROJECTS' || currentView === 'FINISHED_PROJECTS') {
     return (
@@ -374,9 +399,35 @@ function App() {
         {currentView === 'NEWS' && <TechNews />}
 
         {currentView === 'ARCADE' && <ArcadeMenu setCurrentView={setCurrentView} />}
-        {currentView === 'GAME_TACTICAL' && <TacticalGame setCurrentView={setCurrentView} />}
 
-        {/* FIXED: Changed ConquestGame to SnakeGame! */}
+        {currentView === 'GAME_TACTICAL' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+
+            {/* NETWORK STATUS BAR */}
+            <div style={{ padding: '10px', background: '#111', borderBottom: '1px solid #33ff00', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '1.2rem' }}>
+                SERVER STATUS: {isOnline ? <span style={{ color: '#33ff00' }}>ONLINE</span> : <span style={{ color: 'red' }}>OFFLINE</span>}
+              </span>
+
+              {/* This will permanently display the room code to the Host! */}
+              {activeRoom && (
+                <span style={{ background: '#000', color: '#00eeff', padding: '5px 15px', border: '1px dashed #00eeff', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '1.2rem' }}>
+                  OP-CODE: {activeRoom}
+                </span>
+              )}
+            </div>
+
+            {/* THE ACTUAL GAME COMPONENT (DO NOT DELETE THIS!) */}
+            <TacticalGame
+              setCurrentView={setCurrentView}
+              transmitData={transmitData}
+              isOnline={isOnline}
+              activeRoom={activeRoom}
+              setActiveRoom={setActiveRoom}
+            />
+          </div>
+        )}
+
         {currentView === 'GAME_CONQUEST' && <SnakeGame setCurrentView={setCurrentView} />}
       </main>
     </div>
@@ -384,4 +435,3 @@ function App() {
 }
 
 export default App;
-

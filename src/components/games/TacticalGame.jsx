@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './TacticalGame.css';
 
-const TacticalGame = ({ setCurrentView }) => {
+const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setActiveRoom }) => {
     const GRID_SIZE = 15;
 
     const UPGRADE_COSTS = { 1: 300, 2: 500, 3: 800, 4: "MAX" };
@@ -9,22 +9,16 @@ const TacticalGame = ({ setCurrentView }) => {
     const UNIT_COSTS = { 'INF': 100, 'TNK': 250, 'AIR': 400 };
     const BUILD_TIMES = { 'INF': 1, 'TNK': 2, 'AIR': 3 };
 
-    // NEW: Terrain Modifiers (mpCost, Defense Bonus, Attack Bonus)
     const TERRAIN_STATS = {
         'plain': { mpCost: 1, def: 0, atk: 0 },
-        'swamp': { mpCost: 2, def: 0.2, atk: 0 }, // +20% defense, slow
-        'mid_mtn': { mpCost: 1, def: 0.1, atk: 0.1 }, // +10% def/atk
-        'high_mtn': { mpCost: 2, def: 0.2, atk: 0.2 } // +20% def/atk, slow
+        'swamp': { mpCost: 2, def: 0.2, atk: 0 },
+        'mid_mtn': { mpCost: 1, def: 0.1, atk: 0.1 },
+        'high_mtn': { mpCost: 2, def: 0.2, atk: 0.2 }
     };
 
     const UNIT_STATS = {
-        // 2 MP: Can walk 2 Field tiles, OR exactly 1 Mountain/Swamp tile per turn!
         'INF': { maxHp: 100, atk: 25, mp: 2 },
-
-        // 4 MP: Fast on Fields, but a Swamp will eat half of its movement.
         'TNK': { maxHp: 200, atk: 50, mp: 4 },
-
-        // 5 MP: Flies over everything super fast!
         'AIR': { maxHp: 150, atk: 75, mp: 5 }
     };
 
@@ -42,7 +36,7 @@ const TacticalGame = ({ setCurrentView }) => {
     const [players, setPlayers] = useState({});
     const [units, setUnits] = useState([]);
     const [oils, setOils] = useState([]);
-    const [bases, setBases] = useState([]); // NEW: Dynamic capturable bases
+    const [bases, setBases] = useState([]);
     const [mapData, setMapData] = useState({});
     const [currentTurn, setCurrentTurn] = useState('');
 
@@ -50,23 +44,69 @@ const TacticalGame = ({ setCurrentView }) => {
     const [hqMenuOpen, setHqMenuOpen] = useState(false);
     const [log, setLog] = useState([]);
 
+    // Network Status
+    const [joinCodeInput, setJoinCodeInput] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [isHost, setIsHost] = useState(false);
+    const [syncRequests, setSyncRequests] = useState(0);
+
+    // NEW: Identity System - Who is sitting at this keyboard?
+    const [localFaction, setLocalFaction] = useState(null);
+
     const addLog = (msg) => setLog(prev => [msg, ...prev].slice(0, 5));
     const getDistance = (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2);
 
-    // NEW: Combat Math Calculator
+    // ==========================================
+    // --- 1. NETWORK COMMAND FUNCTIONS ---
+    // ==========================================
+    const createPrivate = () => {
+        const newCode = "OP-" + Math.floor(Math.random() * 9000 + 1000);
+        setIsHost(true);
+        setLocalFaction('P1'); // Host is always Player 1
+        setSetupConfig(prev => ({ ...prev, humans: 2 })); // Force 2 Humans for multiplayer
+        setActiveRoom(newCode);
+    };
+
+    const joinPrivate = () => {
+        if (joinCodeInput) {
+            setIsHost(false);
+            setLocalFaction('P2'); // Joiner is Player 2
+            setActiveRoom(joinCodeInput.toUpperCase());
+            setGameState('WAITING_FOR_SYNC');
+        }
+    };
+
+    const searchPublic = () => {
+        setIsSearching(true);
+        const mmWs = new WebSocket(`wss://tactical-multiplayer-server.onrender.com/ws/matchmake`);
+
+        mmWs.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.action === "MATCH_FOUND") {
+                setIsHost(data.is_host || false);
+                setLocalFaction(data.is_host ? 'P1' : 'P2');
+                setSetupConfig(prev => ({ ...prev, humans: 2 })); // Force 2 Humans
+                setActiveRoom(data.room_id);
+                setIsSearching(false);
+
+                if (!data.is_host) {
+                    setGameState('WAITING_FOR_SYNC');
+                }
+            }
+        };
+    };
+
     const getDamage = (attacker, defender, currentMap) => {
         let baseDmg = UNIT_STATS[attacker.type].atk;
         let atkTerrain = currentMap[`${attacker.x}-${attacker.y}`] || 'plain';
         let defTerrain = currentMap[`${defender.x}-${defender.y}`] || 'plain';
 
-        // Airforce flies over terrain, so they get no bonuses from it
         let atkBonus = attacker.type === 'AIR' ? 0 : TERRAIN_STATS[atkTerrain].atk;
         let defBonus = defender.type === 'AIR' ? 0 : TERRAIN_STATS[defTerrain].def;
 
         return Math.max(1, Math.floor(baseDmg * (1 + atkBonus - defBonus)));
     };
 
-    // NEW: Pathfinding Algorithm for Swamp/Mountain Movement Points
     const getValidMoves = (unit, currentUnits, currentMap) => {
         if (!unit || unit.ap === 0) return {};
         let reachable = { [`${unit.x}-${unit.y}`]: 0 };
@@ -81,7 +121,7 @@ const TacticalGame = ({ setCurrentView }) => {
 
                 if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
                     let occupant = currentUnits.find(u => u.x === nx && u.y === ny);
-                    if (occupant && occupant.faction !== unit.faction) continue; // Blocked by enemy
+                    if (occupant && occupant.faction !== unit.faction) continue;
 
                     let terrain = currentMap[`${nx}-${ny}`] || 'plain';
                     let cost = unit.type === 'AIR' ? 1 : TERRAIN_STATS[terrain].mpCost;
@@ -110,75 +150,171 @@ const TacticalGame = ({ setCurrentView }) => {
         return null;
     };
 
-    const startGame = () => {
-        let active = ['P1', 'P2'];
-        if (setupConfig.totalPlayers >= 3) active.push('P3');
-        if (setupConfig.totalPlayers === 4) active.push('P4');
-        setActiveFactions(active);
+    // ==========================================
+    // --- 2. MULTIPLAYER RECEIVE ENGINE ---
+    // ==========================================
+    useEffect(() => {
+        const handleServerMessage = (e) => {
+            if (typeof e.data !== 'string' || !e.data.includes("action")) return;
 
-        let initPlayers = {};
-        let initUnits = [];
-        let initBases = [];
+            try {
+                const data = JSON.parse(e.data);
 
-        active.forEach((f, index) => {
-            initPlayers[f] = { money: 200, level: 1, queue: [], isHuman: index < setupConfig.humans, color: FACTIONS[f].color, name: FACTIONS[f].name };
-
-            // Initialize Bases
-            initBases.push({ id: `base-${f}`, x: FACTIONS[f].hq.x, y: FACTIONS[f].hq.y, owner: f, captureProgress: 3 });
-
-            let spawn = getSpawnLoc(FACTIONS[f].hq.x, FACTIONS[f].hq.y, initUnits);
-            if (spawn) {
-                let stats = UNIT_STATS['INF'];
-                initUnits.push({ id: `${f}-1`, x: spawn.x, y: spawn.y, faction: f, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: 'INF' });
-            }
-        });
-
-        let newMap = {};
-        let allOils = [];
-        const centerStart = 5;
-        const centerEnd = 9;
-
-        for (let y = 0; y < GRID_SIZE; y++) {
-            for (let x = 0; x < GRID_SIZE; x++) {
-                newMap[`${x}-${y}`] = 'plain';
-                if (x >= centerStart && x <= centerEnd && y >= centerStart && y <= centerEnd) {
-                    const randomTerrain = ['plain', 'plain', 'swamp', 'mid_mtn', 'high_mtn'];
-                    newMap[`${x}-${y}`] = randomTerrain[Math.floor(Math.random() * randomTerrain.length)];
-                    if (Math.random() < 0.1) allOils.push({ x, y });
+                // Receive Unit Movements
+                if (data.action === "MOVE") {
+                    setUnits(prevUnits => prevUnits.map(u =>
+                        u.id === data.unit ? { ...u, x: data.x, y: data.y, ap: 0 } : u
+                    ));
+                    // Check for damage transmission
+                    if (data.targetId) {
+                        setUnits(prevUnits => {
+                            let newU = prevUnits.map(u => u.id === data.targetId ? { ...u, hp: data.newHp } : u);
+                            return newU.filter(u => u.hp > 0); // Destroy unit if 0 HP
+                        });
+                        addLog(`Enemy strike reported!`);
+                    }
                 }
-            }
-        }
 
-        const placeSymmetric = (x, y, type, isOil = false) => {
-            if (active.includes('P1')) { newMap[`${x}-${y}`] = type; if (isOil) allOils.push({ x, y }); }
-            if (active.includes('P2')) { newMap[`${14 - x}-${14 - y}`] = type; if (isOil) allOils.push({ x: 14 - x, y: 14 - y }); }
-            if (active.includes('P3')) { newMap[`${14 - x}-${y}`] = type; if (isOil) allOils.push({ x: 14 - x, y }); }
-            if (active.includes('P4')) { newMap[`${x}-${14 - y}`] = type; if (isOil) allOils.push({ x, y: 14 - y }); }
+                // Receive Map and Full Synchronization
+                if (data.action === "SYNC_MAP") {
+                    setMapData(data.mapData);
+                    setOils(data.oils);
+                    setPlayers(data.players);
+                    setUnits(data.units);
+                    setBases(data.bases);
+                    setActiveFactions(data.activeFactions);
+                    setCurrentTurn(data.currentTurn);
+
+                    setGameState('PLAYING');
+                    addLog("SYS.LOG: Map synchronized. BATTLE START.");
+                }
+
+                // Handle Turn Changes from other player
+                if (data.action === "END_TURN") {
+                    setUnits(data.units);
+                    setPlayers(data.players);
+                    setBases(data.bases);
+                    setCurrentTurn(data.currentTurn);
+                    addLog(`--- ${data.currentTurn} TURN ---`);
+                }
+
+                // Handle Enemy HQ Purchases
+                if (data.action === "UPDATE_PLAYERS") {
+                    setPlayers(data.players);
+                }
+
+                // Catch map requests from joining players
+                if (data.action === "REQUEST_SYNC") {
+                    setSyncRequests(prev => prev + 1);
+                }
+
+            } catch (err) {
+                console.log("Ignored non-game websocket message", err);
+            }
         };
 
-        placeSymmetric(2, 2, 'mid_mtn'); placeSymmetric(3, 2, 'high_mtn'); placeSymmetric(2, 3, 'high_mtn');
-        placeSymmetric(4, 1, 'swamp'); placeSymmetric(1, 4, 'swamp');
-        placeSymmetric(3, 4, 'plain', true); placeSymmetric(4, 3, 'plain', true);
+        window.addEventListener("tactical_server_msg", handleServerMessage);
+        return () => window.removeEventListener("tactical_server_msg", handleServerMessage);
+    }, []);
 
-        setMapData(newMap); setPlayers(initPlayers); setUnits(initUnits); setBases(initBases); setOils(allOils);
-        setCurrentTurn('P1'); setGameState('PLAYING');
-        setLog(["SYS.LOG: Map initialized.", `BATTLE START: ${setupConfig.humans} Human(s) vs ${setupConfig.totalPlayers - setupConfig.humans} AI.`]);
-    };
+    // THE CLIENT REQUEST
+    useEffect(() => {
+        if (!isHost && isOnline && gameState === 'WAITING_FOR_SYNC') {
+            if (transmitData) transmitData({ action: "REQUEST_SYNC" });
+        }
+    }, [isHost, isOnline, gameState]);
 
-    const processTurnTransition = (currentFaction, currentUnits, currentPlayers, currentBases) => {
+    // THE HOST RESPONSE
+    useEffect(() => {
+        if (syncRequests > 0 && isHost && gameState === 'PLAYING') {
+            if (transmitData) {
+                transmitData({ action: "SYNC_MAP", mapData, oils, players, units, bases, activeFactions, currentTurn });
+            }
+        }
+    }, [syncRequests]);
+
+    // ==========================================
+    // --- 3. HOST GAME INITIALIZATION ---
+    // ==========================================
+    useEffect(() => {
+        if (isHost && isOnline && activeRoom && gameState === 'SETUP') {
+
+            let active = ['P1', 'P2'];
+            if (setupConfig.totalPlayers >= 3) active.push('P3');
+            if (setupConfig.totalPlayers === 4) active.push('P4');
+            setActiveFactions(active);
+
+            let initPlayers = {};
+            let initUnits = [];
+            let initBases = [];
+
+            active.forEach((f, index) => {
+                initPlayers[f] = { money: 200, level: 1, queue: [], isHuman: index < setupConfig.humans, color: FACTIONS[f].color, name: FACTIONS[f].name };
+                initBases.push({ id: `base-${f}`, x: FACTIONS[f].hq.x, y: FACTIONS[f].hq.y, owner: f, captureProgress: 3 });
+
+                let spawn = getSpawnLoc(FACTIONS[f].hq.x, FACTIONS[f].hq.y, initUnits);
+                if (spawn) {
+                    let stats = UNIT_STATS['INF'];
+                    initUnits.push({ id: `${f}-1`, x: spawn.x, y: spawn.y, faction: f, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: 'INF' });
+                }
+            });
+
+            let newMap = {};
+            let allOils = [];
+            const centerStart = 5;
+            const centerEnd = 9;
+
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    newMap[`${x}-${y}`] = 'plain';
+                    if (x >= centerStart && x <= centerEnd && y >= centerStart && y <= centerEnd) {
+                        const randomTerrain = ['plain', 'plain', 'swamp', 'mid_mtn', 'high_mtn'];
+                        newMap[`${x}-${y}`] = randomTerrain[Math.floor(Math.random() * randomTerrain.length)];
+                        if (Math.random() < 0.1) allOils.push({ x, y });
+                    }
+                }
+            }
+
+            const placeSymmetric = (x, y, type, isOil = false) => {
+                if (active.includes('P1')) { newMap[`${x}-${y}`] = type; if (isOil) allOils.push({ x, y }); }
+                if (active.includes('P2')) { newMap[`${14 - x}-${14 - y}`] = type; if (isOil) allOils.push({ x: 14 - x, y: 14 - y }); }
+                if (active.includes('P3')) { newMap[`${14 - x}-${y}`] = type; if (isOil) allOils.push({ x: 14 - x, y }); }
+                if (active.includes('P4')) { newMap[`${x}-${14 - y}`] = type; if (isOil) allOils.push({ x, y: 14 - y }); }
+            };
+
+            placeSymmetric(2, 2, 'mid_mtn'); placeSymmetric(3, 2, 'high_mtn'); placeSymmetric(2, 3, 'high_mtn');
+            placeSymmetric(4, 1, 'swamp'); placeSymmetric(1, 4, 'swamp');
+            placeSymmetric(3, 4, 'plain', true); placeSymmetric(4, 3, 'plain', true);
+
+            setMapData(newMap); setPlayers(initPlayers); setUnits(initUnits); setBases(initBases); setOils(allOils);
+            setCurrentTurn('P1'); setGameState('PLAYING');
+            setLog(["SYS.LOG: Map initialized.", `BATTLE START: OP-CODE ${activeRoom}`]);
+
+            // BROADCAST THE GENERATED MAP TO THE ROOM
+            if (transmitData) {
+                setTimeout(() => {
+                    transmitData({ action: "SYNC_MAP", mapData: newMap, oils: allOils, players: initPlayers, units: initUnits, bases: initBases, activeFactions: active, currentTurn: 'P1' });
+                }, 500);
+            }
+        }
+    }, [isHost, isOnline, activeRoom, gameState]);
+
+    // ==========================================
+    // --- 4. GAMEPLAY & LOGIC ENGINE ---
+    // ==========================================
+    const processTurnTransition = (currentFaction, currentUnits, currentPlayers, currentBases, isFromNetwork = false) => {
         let idx = activeFactions.indexOf(currentFaction);
         let nextFaction = activeFactions[(idx + 1) % activeFactions.length];
         let nextPlayer = { ...currentPlayers[nextFaction] };
         let newLogs = [`--- ${FACTIONS[nextFaction].name} TURN ---`];
         let nextBases = [...currentBases];
 
-        // NEW: Capture Base Logic!
         nextBases.forEach(base => {
             let occupant = currentUnits.find(u => u.x === base.x && u.y === base.y);
             if (occupant && occupant.type === 'INF' && occupant.faction !== base.owner) {
-                if (occupant.faction === currentFaction) { // Progress happens at end of turn
+                if (occupant.faction === currentFaction) {
                     base.captureProgress -= 1;
-                    newLogs.push(`${occupant.faction} hacking Base! (${base.captureProgress} T-Cycles left)`);
+                    newLogs.push(`${occupant.faction} hacking Base! (${base.captureProgress} left)`);
                     if (base.captureProgress <= 0) {
                         base.owner = occupant.faction;
                         base.captureProgress = 3;
@@ -186,13 +322,13 @@ const TacticalGame = ({ setCurrentView }) => {
                     }
                 }
             } else {
-                base.captureProgress = 3; // Reset if they walk off
+                base.captureProgress = 3;
             }
         });
 
         let oilCount = 0;
         oils.forEach(oil => { if (currentUnits.find(u => u.x === oil.x && u.y === oil.y && u.faction === nextFaction)) oilCount++; });
-        const income = (oilCount * INCOME_RATES[nextPlayer.level]) + (nextBases.filter(b => b.owner === nextFaction).length * 50); // Extra $50 per base!
+        const income = (oilCount * INCOME_RATES[nextPlayer.level]) + (nextBases.filter(b => b.owner === nextFaction).length * 50);
         nextPlayer.money += income;
         if (nextPlayer.isHuman) newLogs.push(`Income: +$${income}`);
 
@@ -202,32 +338,41 @@ const TacticalGame = ({ setCurrentView }) => {
             if (item.turnsLeft > 1) {
                 updatedQueue.push({ ...item, turnsLeft: item.turnsLeft - 1 });
             } else {
-                // NEW: Spawns check ALL owned bases!
                 let ownedBases = nextBases.filter(b => b.owner === nextFaction);
                 let spawn = null;
                 for (let b of ownedBases) { spawn = getSpawnLoc(b.x, b.y, nextUnits); if (spawn) break; }
 
                 if (spawn) {
                     let stats = UNIT_STATS[item.type];
-                    nextUnits.push({ id: `${nextFaction}-${Date.now()}-${Math.random()}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
+                    // Using array length for ID instead of random to prevent network desync
+                    nextUnits.push({ id: `${nextFaction}-U${nextUnits.length + 1}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
                     newLogs.push(`${item.type} deployed!`);
                 } else {
-                    updatedQueue.push({ ...item, turnsLeft: 0 }); // Wait for empty space
+                    updatedQueue.push({ ...item, turnsLeft: 0 });
                 }
             }
         });
         nextPlayer.queue = updatedQueue;
 
+        let updatedPlayers = { ...currentPlayers, [nextFaction]: nextPlayer };
+
         setBases(nextBases);
-        setPlayers(prev => ({ ...prev, [nextFaction]: nextPlayer }));
+        setPlayers(updatedPlayers);
         setUnits(nextUnits);
         setCurrentTurn(nextFaction);
         newLogs.reverse().forEach(addLog);
+
+        // Transmit the fully calculated new turn to the other player!
+        if (!isFromNetwork && transmitData) {
+            transmitData({ action: "END_TURN", units: nextUnits, players: updatedPlayers, bases: nextBases, currentTurn: nextFaction });
+        }
     };
 
+    // AI LOOP (Only runs on the Host to prevent duplicate moves!)
     useEffect(() => {
         if (gameState !== 'PLAYING' || !currentTurn) return;
         if (players[currentTurn].isHuman) return;
+        if (!isHost) return;
 
         const timer = setTimeout(() => {
             let nextUnits = [...units];
@@ -252,7 +397,6 @@ const TacticalGame = ({ setCurrentView }) => {
                 let targetEnemy = enemies.find(e => getDistance(unit.x, unit.y, e.x, e.y) === 1);
 
                 if (targetEnemy) {
-                    // NEW AI COMBAT
                     let dmg = getDamage(unit, targetEnemy, mapData);
                     if (setupConfig.difficulty === 'EASY') dmg = Math.floor(dmg * 0.8);
 
@@ -260,20 +404,18 @@ const TacticalGame = ({ setCurrentView }) => {
                     newLogs.push(`${unit.type} attacked for ${dmg} DMG.`);
                     if (targetEnemy.hp <= 0) nextUnits = nextUnits.filter(u => u.id !== targetEnemy.id);
                 } else {
-                    // NEW AI MOVEMENT 
                     let unownedOils = oils.filter(o => !nextUnits.find(u => u.x === o.x && u.y === o.y && u.faction === currentTurn));
                     let enemyBases = bases.filter(b => b.owner !== currentTurn);
 
                     let target = (enemyBases.length > 0) ? enemyBases[0] : null;
                     if (unownedOils.length > 0 && setupConfig.difficulty !== 'HARD') target = unownedOils[0];
                     if (setupConfig.difficulty === 'HARD' && enemies.length > 0) target = enemies[0];
-                    if (!target) return; // Nothing to do
+                    if (!target) return;
 
                     let validMoves = getValidMoves(unit, nextUnits, mapData);
                     let bestMove = { x: unit.x, y: unit.y };
                     let minDist = getDistance(unit.x, unit.y, target.x, target.y);
 
-                    // AI uses Pathfinding to get as close to target as possible!
                     for (let coords in validMoves) {
                         let [vx, vy] = coords.split('-').map(Number);
                         let d = getDistance(vx, vy, target.x, target.y);
@@ -286,7 +428,7 @@ const TacticalGame = ({ setCurrentView }) => {
 
             newLogs.reverse().forEach(addLog);
             let updatedPlayers = { ...players, [currentTurn]: aiPlayer };
-            processTurnTransition(currentTurn, nextUnits, updatedPlayers, bases);
+            processTurnTransition(currentTurn, nextUnits, updatedPlayers, bases, false);
 
         }, 1200);
 
@@ -294,7 +436,11 @@ const TacticalGame = ({ setCurrentView }) => {
     }, [currentTurn, units, players, oils, bases, mapData, gameState, setupConfig.difficulty, activeFactions]);
 
     const handleCellClick = (x, y) => {
-        if (gameState !== 'PLAYING' || !players[currentTurn].isHuman) return;
+        if (gameState !== 'PLAYING') return;
+
+        // CONTROL LOCK: Prevent clicking if it is not your turn!
+        if (currentTurn !== localFaction) return;
+
         setHqMenuOpen(false);
 
         const clickedUnit = units.find(u => u.x === x && u.y === y);
@@ -307,10 +453,12 @@ const TacticalGame = ({ setCurrentView }) => {
 
         if (!selectedUnit) return;
 
-        // NEW: Human Movement uses Pathfinding!
         const validMoves = getValidMoves(selectedUnit, units, mapData);
 
         if (!clickedUnit && validMoves[`${x}-${y}`] !== undefined && selectedUnit.ap > 0) {
+
+            if (transmitData) transmitData({ action: "MOVE", unit: selectedUnit.id, x: x, y: y });
+
             setUnits(units.map(u => u.id === selectedUnit.id ? { ...u, x, y, ap: 0 } : u));
             setSelectedUnitId(null);
             if (oils.find(o => o.x === x && o.y === y)) addLog(`Oil rig secured.`);
@@ -321,9 +469,12 @@ const TacticalGame = ({ setCurrentView }) => {
         }
 
         if (clickedUnit && clickedUnit.faction !== currentTurn && getDistance(selectedUnit.x, selectedUnit.y, x, y) === 1 && selectedUnit.ap > 0) {
-            // NEW Human Combat Calculation
             const damage = getDamage(selectedUnit, clickedUnit, mapData);
             const newHp = clickedUnit.hp - damage;
+
+            if (transmitData) {
+                transmitData({ action: "MOVE", unit: selectedUnit.id, x: selectedUnit.x, y: selectedUnit.y, targetId: clickedUnit.id, newHp: newHp });
+            }
 
             let newUnits = units.map(u => {
                 if (u.id === selectedUnit.id) return { ...u, ap: 0 };
@@ -346,63 +497,118 @@ const TacticalGame = ({ setCurrentView }) => {
         const cost = UNIT_COSTS[type];
         if (players[currentTurn].money < cost) { addLog("INSUFFICIENT FUNDS."); return; }
 
-        setPlayers(prev => ({
-            ...prev, [currentTurn]: {
-                ...prev[currentTurn], money: prev[currentTurn].money - cost, queue: [...prev[currentTurn].queue, { type, turnsLeft: BUILD_TIMES[type] }]
-            }
-        }));
+        const updatedPlayers = { ...players, [currentTurn]: { ...players[currentTurn], money: players[currentTurn].money - cost, queue: [...players[currentTurn].queue, { type, turnsLeft: BUILD_TIMES[type] }] } };
+
+        setPlayers(updatedPlayers);
         addLog(`Construction started: ${type}.`);
+        if (transmitData) transmitData({ action: "UPDATE_PLAYERS", players: updatedPlayers });
     };
 
     const upgradeHq = () => {
         const cost = UPGRADE_COSTS[players[currentTurn].level];
         if (cost === "MAX" || players[currentTurn].money < cost) return;
-        setPlayers(prev => ({ ...prev, [currentTurn]: { ...prev[currentTurn], money: prev[currentTurn].money - cost, level: prev[currentTurn].level + 1 } }));
+
+        const updatedPlayers = { ...players, [currentTurn]: { ...players[currentTurn], money: players[currentTurn].money - cost, level: players[currentTurn].level + 1 } };
+        setPlayers(updatedPlayers);
         addLog(`HQ Upgraded!`); setHqMenuOpen(false);
+        if (transmitData) transmitData({ action: "UPDATE_PLAYERS", players: updatedPlayers });
     };
 
-    if (gameState === 'SETUP') {
+    // ==========================================
+    // --- 5. RENDER ENGINE ---
+    // ==========================================
+    if (gameState === 'SETUP' || gameState === 'WAITING_FOR_SYNC') {
         return (
             <div className="conquest-container" style={{ alignItems: 'center' }}>
-                <h2>SYS_INIT // SKIRMISH CONFIG</h2>
-                <div style={{ background: '#111', border: '1px solid #33ff00', padding: '20px', width: '300px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div><label style={{ color: '#aaa', display: 'block' }}>TOTAL FACTIONS:</label><select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%' }}><option value={2}>2 PLAYERS</option><option value={3}>3 PLAYERS</option><option value={4}>4 PLAYERS</option></select></div>
-                    <div><label style={{ color: '#aaa', display: 'block' }}>HUMAN CONTROLLERS:</label><select value={setupConfig.humans} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%' }}>{[...Array(setupConfig.totalPlayers)].map((_, i) => (<option key={i + 1} value={i + 1}>{i + 1} HUMAN(S)</option>))}</select></div>
-                    <div><label style={{ color: '#aaa', display: 'block' }}>AI DIFFICULTY:</label><select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%', borderColor: setupConfig.difficulty === 'HARD' ? '#ff0055' : '' }}><option value="EASY">EASY</option><option value="NORMAL">NORMAL</option><option value="HARD">HARD</option></select></div>
-                    <button className="game-btn" style={{ borderColor: '#00eeff', color: '#00eeff', marginTop: '10px' }} onClick={startGame}>[ INITIATE BATTLE ]</button>
-                    <button className="game-btn" style={{ borderColor: '#555', color: '#555' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
+                <h2>SYS_INIT // NETWORK COMMAND</h2>
+                <div style={{ marginBottom: '10px', color: isOnline ? '#33ff00' : 'red', fontFamily: 'monospace' }}>
+                    SATELLITE LINK: {isOnline ? "ESTABLISHED" : "OFFLINE"}
+                </div>
+
+                {activeRoom && (
+                    <div style={{ background: '#000', border: '1px dashed #33ff00', padding: '10px', marginBottom: '15px', textAlign: 'center' }}>
+                        <span style={{ color: '#aaa' }}>ACTIVE ROOM CODE:</span><br />
+                        <span style={{ fontSize: '1.5rem', color: '#fff', letterSpacing: '2px' }}>{activeRoom}</span>
+                    </div>
+                )}
+
+                <div style={{ background: '#111', border: '1px solid #33ff00', padding: '20px', width: '350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+
+                    {isSearching ? (
+                        <div style={{ color: '#00eeff', textAlign: 'center', padding: '20px 0' }}>
+                            <h3 style={{ margin: '0 0 10px 0' }}>[ SEARCHING UPLINKS ]</h3>
+                            {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
+                        </div>
+                    ) : gameState === 'WAITING_FOR_SYNC' ? (
+                        <div style={{ color: '#ffcc00', textAlign: 'center', padding: '20px 0' }}>
+                            <h3 style={{ margin: '0 0 10px 0' }}>[ SYNCHRONIZING ]</h3>
+                            {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
+                        </div>
+                    ) : (
+                        <>
+                            {/* --- RESTORED CONFIGURATION MENU --- */}
+                            <div style={{ background: '#050505', padding: '10px', border: '1px dashed #555', marginBottom: '10px' }}>
+                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>TOTAL FACTIONS:</label>
+                                <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
+                                    <option value={2}>2 FACTIONS</option>
+                                    <option value={3}>3 FACTIONS</option>
+                                    <option value={4}>4 FACTIONS</option>
+                                </select>
+
+                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>NETWORK HUMANS:</label>
+                                <select value={setupConfig.humans} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
+                                    {[...Array(setupConfig.totalPlayers)].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{i + 1} HUMAN(S)</option>
+                                    ))}
+                                </select>
+
+                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>AI DIFFICULTY:</label>
+                                <select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%' }}>
+                                    <option value="EASY">EASY</option>
+                                    <option value="NORMAL">NORMAL</option>
+                                    <option value="HARD">HARD</option>
+                                </select>
+                            </div>
+                            {/* ------------------------------------ */}
+
+                            <button className="game-btn" style={{ borderColor: '#33ff00', color: '#33ff00' }} onClick={createPrivate}>[ HOST PRIVATE OPERATION ]</button>
+
+                            <hr style={{ borderTop: '1px dashed #555', width: '100%', margin: '5px 0' }} />
+
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <input type="text" placeholder="ENTER OP-CODE" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value)} style={{ background: '#000', color: '#33ff00', border: '1px solid #555', padding: '10px', width: '60%', fontFamily: "'VT323', monospace", fontSize: '1.2rem', textTransform: 'uppercase' }} />
+                                <button className="game-btn" style={{ width: '40%', padding: '10px 0' }} onClick={joinPrivate}>[ JOIN ]</button>
+                            </div>
+
+                            <button className="game-btn" style={{ borderColor: '#00eeff', color: '#00eeff' }} onClick={searchPublic}>[ PUBLIC MATCHMAKING ]</button>
+                            <button className="game-btn" style={{ borderColor: '#555', color: '#555', marginTop: '10px' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
+                        </>
+                    )}
                 </div>
             </div>
         );
     }
 
-    // Pre-calculate valid moves for the selected unit to show outlines
-    const selectedUnit = units.find(u => u.id === selectedUnitId);
-    const validMoves = getValidMoves(selectedUnit, units, mapData);
+    const selectedUnitObj = units.find(u => u.id === selectedUnitId);
+    const validMovesObj = getValidMoves(selectedUnitObj, units, mapData);
 
     let cells = [];
     for (let y = 0; y < GRID_SIZE; y++) {
         for (let x = 0; x < GRID_SIZE; x++) {
             const unit = units.find(u => u.x === x && u.y === y);
             const isOil = oils.find(o => o.x === x && o.y === y);
-
-            // NEW: Draw Capturable Bases
             const base = bases.find(b => b.x === x && b.y === y);
-
             const terrainType = mapData[`${x}-${y}`] || 'plain';
-            const canMoveHere = validMoves[`${x}-${y}`] !== undefined;
+            const canMoveHere = validMovesObj[`${x}-${y}`] !== undefined;
 
             cells.push(
                 <div key={`${x}-${y}`} className={`tac-cell ${terrainType}`} style={{ border: canMoveHere ? '1px dashed #fff' : 'none' }} onClick={() => handleCellClick(x, y)}>
-
                     {base && (
                         <div className="city" style={{ color: FACTIONS[base.owner].color, border: `1px dashed ${FACTIONS[base.owner].color}` }}>
                             {base.captureProgress < 3 ? `[${base.captureProgress}]` : '[HQ]'}
                         </div>
                     )}
-
                     {isOil && <div className="oil-rig" style={{ position: 'absolute', opacity: unit ? 0.3 : 1 }}>$</div>}
-
                     {unit && (
                         <div className={`unit ${selectedUnitId === unit.id ? 'selected' : ''} ${unit.ap === 0 ? 'exhausted' : ''}`}
                             style={{ position: 'absolute', zIndex: 1, border: `2px solid ${FACTIONS[unit.faction].color}`, color: FACTIONS[unit.faction].color, background: '#000' }}>
@@ -419,46 +625,32 @@ const TacticalGame = ({ setCurrentView }) => {
 
     return (
         <div className="conquest-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '600px', background: '#111', padding: '10px', border: `1px solid ${currentPlayer?.color || '#555'}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '600px', background: '#111', padding: '10px', border: `1px solid ${FACTIONS[localFaction]?.color || '#555'}` }}>
                 {activeFactions.map(f => (
                     <div key={f} style={{ color: FACTIONS[f].color, textAlign: 'center', opacity: currentTurn === f ? 1 : 0.4 }}>
-                        <strong>{FACTIONS[f].name}</strong><br />
+                        <strong>{FACTIONS[f].name}</strong> {localFaction === f && "(YOU)"}<br />
                         ${players[f].money} | L{players[f].level}
                     </div>
                 ))}
             </div>
 
             <div className="turn-indicator" style={{ color: currentPlayer?.color, textAlign: 'center', margin: '10px 0' }}>
-                <h3>{currentPlayer?.isHuman ? `>> YOUR COMMAND (${FACTIONS[currentTurn].name}) <<` : `>> ${FACTIONS[currentTurn].name} THINKING... <<`}</h3>
+                <h3>{currentTurn === localFaction ? `>> YOUR COMMAND (${FACTIONS[currentTurn].name}) <<` : `>> ${FACTIONS[currentTurn].name} THINKING... <<`}</h3>
             </div>
 
-            {/* --- 1. THE GAME BOARD --- */}
-            <div className="tactical-board" style={{ opacity: currentPlayer?.isHuman ? 1 : 0.8 }}>
+            <div className="tactical-board" style={{ opacity: currentTurn === localFaction ? 1 : 0.6 }}>
                 {cells}
             </div>
 
-            {/* --- 2. THE TERRAIN LEGEND --- */}
             <div style={{ width: '100%', maxWidth: '600px', background: '#050505', border: '1px dashed #555', padding: '10px', marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', textAlign: 'center', fontSize: '0.85rem', color: '#aaa', fontFamily: "'VT323', monospace" }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                    <div className="tac-cell plain" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div>
-                    <div>FIELD<br />1 MP</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                    <div className="tac-cell swamp" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div>
-                    <div>SWAMP<br />2 MP | +20% DEF</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                    <div className="tac-cell mid_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div>
-                    <div>HILLS<br />1 MP | +10% ALL</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                    <div className="tac-cell high_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div>
-                    <div>MOUNTAIN<br />2 MP | +20% ALL</div>
-                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell plain" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>FIELD<br />1 MP</div></div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell swamp" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>SWAMP<br />2 MP | +20% DEF</div></div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell mid_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>HILLS<br />1 MP | +10% ALL</div></div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell high_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>MOUNTAIN<br />2 MP | +20% ALL</div></div>
             </div>
 
-            {/* --- 3. HQ CONTROLS --- */}
-            {currentPlayer?.isHuman && (
+            {/* UI LOCK: Only show controls if it is actually YOUR turn! */}
+            {currentTurn === localFaction ? (
                 hqMenuOpen ? (
                     <div className="hq-menu" style={{ maxWidth: '600px' }}>
                         <h3 style={{ margin: 0, color: currentPlayer.color }}>-- HQ COMMAND --</h3>
@@ -475,12 +667,15 @@ const TacticalGame = ({ setCurrentView }) => {
                 ) : (
                     <div className="game-controls" style={{ marginTop: '20px' }}>
                         <button className="game-btn" onClick={() => setHqMenuOpen(true)}>[ HQ MENU ]</button>
-                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases)}>[ END TURN ]</button>
+                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
                     </div>
                 )
+            ) : (
+                <div className="game-controls" style={{ marginTop: '20px', border: '1px dashed #555', color: '#555', padding: '10px' }}>
+                    [ AWAITING ENEMY COMMANDER... ]
+                </div>
             )}
 
-            {/* --- 4. COMBAT LOG --- */}
             <div style={{ marginTop: '20px', width: '100%', maxWidth: '600px', border: '1px dashed #33ff00', padding: '10px', background: '#000' }}>
                 {log.map((msg, i) => <div key={i} style={{ color: i === 0 ? '#33ff00' : '#555', fontFamily: 'VT323', fontSize: '1rem' }}>{msg}</div>)}
             </div>
@@ -489,3 +684,5 @@ const TacticalGame = ({ setCurrentView }) => {
 };
 
 export default TacticalGame;
+
+
