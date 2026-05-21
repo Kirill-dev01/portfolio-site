@@ -669,21 +669,21 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     const handleEndTurn = () => {
         if (currentTurn !== localFaction || gameState !== 'PLAYING') return;
 
-        // --- 1. DYNAMIC TURN CYCLING ---
-        // Find who is currently playing, and pass to the next faction in the array
+        // 1. DYNAMIC TURN CYCLING
         const currentIndex = activeFactions.indexOf(currentTurn);
         const nextTurn = activeFactions[(currentIndex + 1) % activeFactions.length];
 
-        // --- 2. BASE CAPTURE ENGINE ---
+        // 2. BASE CAPTURE ENGINE
         let newBases = bases.map(base => {
             const occupyingUnit = units.find(u => u.x === base.x && u.y === base.y);
 
-            if (occupyingUnit && occupyingUnit.owner !== base.owner) {
+            // MATCHED: Changed occupyingUnit.owner to occupyingUnit.faction
+            if (occupyingUnit && occupyingUnit.faction !== base.owner) {
                 const currentProgress = base.captureProgress || 0;
 
                 if (currentProgress + 1 >= 3) {
-                    addLog(`SYS: Sector at [${base.x}, ${base.y}] captured by ${occupyingUnit.owner}!`);
-                    return { ...base, owner: occupyingUnit.owner, captureProgress: 0 };
+                    addLog(`SYS: Sector at [${base.x}, ${base.y}] captured by ${occupyingUnit.faction}!`);
+                    return { ...base, owner: occupyingUnit.faction, captureProgress: 0 };
                 } else {
                     addLog(`SYS: Securing base... [${currentProgress + 1}/3]`);
                     return { ...base, captureProgress: currentProgress + 1 };
@@ -692,26 +692,24 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
             return { ...base, captureProgress: 0 };
         });
 
-        // --- 3. DYNAMIC VICTORY CHECK ---
+        // 3. DYNAMIC VICTORY CHECK
         let newWinner = null;
-
-        // Find which factions still own at least one base
         const survivingFactions = activeFactions.filter(faction =>
             newBases.some(base => base.owner === faction)
         );
 
-        // If only ONE faction has bases left, they are the supreme victor!
         if (survivingFactions.length === 1) {
             newWinner = survivingFactions[0];
             setWinner(newWinner);
             setGameState('GAME_OVER');
         }
 
-        // --- 4. STANDARD TURN UPDATES ---
+        // 4. STANDARD TURN UPDATES
         setBases(newBases);
         setCurrentTurn(nextTurn);
 
-        const resetUnits = units.map(u => u.owner === nextTurn ? { ...u, ap: 1 } : u);
+        // FIXED: Changed u.owner to u.faction so action points reload perfectly!
+        const resetUnits = units.map(u => u.faction === nextTurn ? { ...u, ap: 1 } : u);
         setUnits(resetUnits);
 
         if (transmitData) {
