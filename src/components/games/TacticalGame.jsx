@@ -30,6 +30,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     };
 
     const [gameState, setGameState] = useState('SETUP');
+    const [winner, setWinner] = useState(null);
     const [setupConfig, setSetupConfig] = useState({ totalPlayers: 2, humans: 1, difficulty: 'NORMAL' });
 
     const [activeFactions, setActiveFactions] = useState([]);
@@ -196,6 +197,13 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                     setBases(data.bases);
                     setCurrentTurn(data.currentTurn);
                     addLog(`--- ${data.currentTurn} TURN ---`);
+
+                    // --- NEW: CATCH VICTORY BROADCAST ---
+                    if (data.winner) {
+                        setWinner(data.winner);
+                        setGameState('GAME_OVER');
+                        addLog(`SYS: CRITICAL ALERT. ${data.winner} HAS ACHIEVED TOTAL VICTORY.`);
+                    }
                 }
 
                 // Handle Enemy HQ Purchases
@@ -463,17 +471,34 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         const clickedUnit = units.find(u => u.x === x && u.y === y);
         const selectedUnit = units.find(u => u.id === selectedUnitId);
 
+        // 1. SELECT FRIENDLY UNIT
         if (clickedUnit && clickedUnit.faction === currentTurn) {
             if (clickedUnit.ap > 0) setSelectedUnitId(clickedUnit.id);
             return;
         }
 
-        if (!selectedUnit) return;
+        // --- ADJUSTED JUNCTION: NO UNIT SELECTED ---
+        if (!selectedUnit) {
+            // Check if the empty tile you clicked is a base you own
+            const clickedBase = bases.find(b => b.x === x && b.y === y);
 
+            if (clickedBase && clickedBase.owner === localFaction && currentTurn === localFaction) {
+                // Only open the menu if the factory tile is clear (no unit blocking it)
+                if (!clickedUnit) {
+                    // Update this to match your project's state variables:
+                    setSelectedBuildLocation({ x, y }); // Tracks where to spawn the unit
+                    setHqMenuOpen(true);                // Opens your build UI
+                } else {
+                    addLog("SYS: Launchpad blocked by active deployment.");
+                }
+            }
+            return; // Halt execution early since no unit is selected for movement
+        }
+
+        // 2. MOVE SELECTION
         const validMoves = getValidMoves(selectedUnit, units, mapData);
 
         if (!clickedUnit && validMoves[`${x}-${y}`] !== undefined && selectedUnit.ap > 0) {
-
             if (transmitData) transmitData({ action: "MOVE", unit: selectedUnit.id, x: x, y: y });
 
             setUnits(units.map(u => u.id === selectedUnit.id ? { ...u, x, y, ap: 0 } : u));
@@ -485,6 +510,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
             return;
         }
 
+        // 3. COMBAT ENGINE
         if (clickedUnit && clickedUnit.faction !== currentTurn && getDistance(selectedUnit.x, selectedUnit.y, x, y) === 1 && selectedUnit.ap > 0) {
             const damage = getDamage(selectedUnit, clickedUnit, mapData);
             const newHp = clickedUnit.hp - damage;
@@ -640,6 +666,70 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
     const currentPlayer = players[currentTurn];
 
+    const handleEndTurn = () => {
+        if (currentTurn !== localFaction || gameState !== 'PLAYING') return;
+
+        const nextTurn = currentTurn === 'P1' ? 'P2' : 'P1';
+
+        // --- 1. BASE CAPTURE ENGINE ---
+        let newBases = bases.map(base => {
+            // Check if any unit is currently standing on this base
+            const occupyingUnit = units.find(u => u.x === base.x && u.y === base.y);
+
+            // If a unit is there, and it belongs to the ENEMY of the base
+            if (occupyingUnit && occupyingUnit.owner !== base.owner) {
+                const currentProgress = base.captureProgress || 0;
+
+                if (currentProgress + 1 >= 3) {
+                    // SECURED! Change the owner and reset progress
+                    addLog(`SYS: Sector at [${base.x}, ${base.y}] captured by ${occupyingUnit.owner}!`);
+                    return { ...base, owner: occupyingUnit.owner, captureProgress: 0 };
+                } else {
+                    // PROGRESSING...
+                    addLog(`SYS: Securing base... [${currentProgress + 1}/3]`);
+                    return { ...base, captureProgress: currentProgress + 1 };
+                }
+            }
+
+            // If the base is empty or a friendly unit is on it, reset the capture timer
+            return { ...base, captureProgress: 0 };
+        });
+
+        // --- 2. VICTORY CHECK ---
+        let newWinner = null;
+        const p1Bases = newBases.filter(b => b.owner === 'P1').length;
+        const p2Bases = newBases.filter(b => b.owner === 'P2').length;
+
+        // If a player has lost all their bases, the other player wins
+        if (p1Bases === 0) newWinner = 'P2';
+        if (p2Bases === 0) newWinner = 'P1';
+
+        if (newWinner) {
+            setWinner(newWinner);
+            setGameState('GAME_OVER');
+        }
+
+        // --- 3. STANDARD TURN UPDATES ---
+        setBases(newBases);
+        setCurrentTurn(nextTurn);
+
+        // Reset AP for the next player
+        const resetUnits = units.map(u => u.owner === nextTurn ? { ...u, ap: 1 } : u);
+        setUnits(resetUnits);
+
+        // Broadcast the new map, bases, and potential winner to the enemy
+        if (transmitData) {
+            transmitData({
+                action: "END_TURN",
+                units: resetUnits,
+                players,
+                bases: newBases,
+                currentTurn: nextTurn,
+                winner: newWinner // <-- Send the victory flag over the network!
+            });
+        }
+    };
+
     return (
         <div className="conquest-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '600px', background: '#111', padding: '10px', border: `1px solid ${FACTIONS[localFaction]?.color || '#555'}` }}>
@@ -684,12 +774,30 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                 ) : (
                     <div className="game-controls" style={{ marginTop: '20px' }}>
                         <button className="game-btn" onClick={() => setHqMenuOpen(true)}>[ HQ MENU ]</button>
-                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
+                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={handleEndTurn}>[ END TURN ]</button>
                     </div>
                 )
             ) : (
                 <div className="game-controls" style={{ marginTop: '20px', border: '1px dashed #555', color: '#555', padding: '10px' }}>
                     [ AWAITING ENEMY COMMANDER... ]
+                </div>
+            )}
+
+            {/* --- VICTORY OVERLAY --- */}
+            {gameState === 'GAME_OVER' && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90 border-4 border-[#00FF41]">
+                    <h1 className={`text-6xl font-bold mb-4 animate-pulse ${winner === localFaction ? 'text-[#00FF41]' : 'text-red-500'}`}>
+                        {winner === localFaction ? "VICTORY ACHIEVED" : "CRITICAL DEFEAT"}
+                    </h1>
+                    <p className="text-xl text-[#00FF41] mb-8 uppercase tracking-widest">
+                        {winner === 'P1' ? "RED_SWARM" : "CYAN_NET"} NOW CONTROLS ALL SECTORS.
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-8 py-3 border-2 border-[#00FF41] text-[#00FF41] hover:bg-[#00FF41] hover:text-black transition-colors font-bold tracking-widest"
+                    >
+                        [ INITIALIZE NEW OPERATION ]
+                    </button>
                 </div>
             )}
 
