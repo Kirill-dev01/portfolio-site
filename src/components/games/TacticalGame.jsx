@@ -203,6 +203,23 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                     setPlayers(data.players);
                 }
 
+                // --- NEW: AI GHOST PROTOCOL ---
+                // Handle enemy disconnects
+                if (data.action === "PLAYER_LEFT") {
+                    setPlayers(prevPlayers => {
+                        let newPlayers = { ...prevPlayers };
+                        // Convert any faction that isn't YOU into an AI
+                        Object.keys(newPlayers).forEach(f => {
+                            if (f !== localFaction && newPlayers[f].isHuman) {
+                                newPlayers[f].isHuman = false;
+                            }
+                        });
+                        return newPlayers;
+                    });
+                    addLog("WARNING: ENEMY SATELLITE LINK LOST.");
+                    addLog("AI GHOST PROTOCOL ENGAGED.");
+                }
+
                 // Catch map requests from joining players
                 if (data.action === "REQUEST_SYNC") {
                     setSyncRequests(prev => prev + 1);
