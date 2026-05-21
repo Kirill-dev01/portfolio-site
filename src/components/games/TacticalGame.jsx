@@ -232,7 +232,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
         window.addEventListener("tactical_server_msg", handleServerMessage);
         return () => window.removeEventListener("tactical_server_msg", handleServerMessage);
-    }, []);
+    }, [localFaction]);
 
     // THE CLIENT REQUEST
     useEffect(() => {
