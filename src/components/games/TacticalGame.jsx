@@ -669,55 +669,51 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     const handleEndTurn = () => {
         if (currentTurn !== localFaction || gameState !== 'PLAYING') return;
 
-        const nextTurn = currentTurn === 'P1' ? 'P2' : 'P1';
+        // --- 1. DYNAMIC TURN CYCLING ---
+        // Find who is currently playing, and pass to the next faction in the array
+        const currentIndex = activeFactions.indexOf(currentTurn);
+        const nextTurn = activeFactions[(currentIndex + 1) % activeFactions.length];
 
-        // --- 1. BASE CAPTURE ENGINE ---
+        // --- 2. BASE CAPTURE ENGINE ---
         let newBases = bases.map(base => {
-            // Check if any unit is currently standing on this base
             const occupyingUnit = units.find(u => u.x === base.x && u.y === base.y);
 
-            // If a unit is there, and it belongs to the ENEMY of the base
             if (occupyingUnit && occupyingUnit.owner !== base.owner) {
                 const currentProgress = base.captureProgress || 0;
 
                 if (currentProgress + 1 >= 3) {
-                    // SECURED! Change the owner and reset progress
                     addLog(`SYS: Sector at [${base.x}, ${base.y}] captured by ${occupyingUnit.owner}!`);
                     return { ...base, owner: occupyingUnit.owner, captureProgress: 0 };
                 } else {
-                    // PROGRESSING...
                     addLog(`SYS: Securing base... [${currentProgress + 1}/3]`);
                     return { ...base, captureProgress: currentProgress + 1 };
                 }
             }
-
-            // If the base is empty or a friendly unit is on it, reset the capture timer
             return { ...base, captureProgress: 0 };
         });
 
-        // --- 2. VICTORY CHECK ---
+        // --- 3. DYNAMIC VICTORY CHECK ---
         let newWinner = null;
-        const p1Bases = newBases.filter(b => b.owner === 'P1').length;
-        const p2Bases = newBases.filter(b => b.owner === 'P2').length;
 
-        // If a player has lost all their bases, the other player wins
-        if (p1Bases === 0) newWinner = 'P2';
-        if (p2Bases === 0) newWinner = 'P1';
+        // Find which factions still own at least one base
+        const survivingFactions = activeFactions.filter(faction =>
+            newBases.some(base => base.owner === faction)
+        );
 
-        if (newWinner) {
+        // If only ONE faction has bases left, they are the supreme victor!
+        if (survivingFactions.length === 1) {
+            newWinner = survivingFactions[0];
             setWinner(newWinner);
             setGameState('GAME_OVER');
         }
 
-        // --- 3. STANDARD TURN UPDATES ---
+        // --- 4. STANDARD TURN UPDATES ---
         setBases(newBases);
         setCurrentTurn(nextTurn);
 
-        // Reset AP for the next player
         const resetUnits = units.map(u => u.owner === nextTurn ? { ...u, ap: 1 } : u);
         setUnits(resetUnits);
 
-        // Broadcast the new map, bases, and potential winner to the enemy
         if (transmitData) {
             transmitData({
                 action: "END_TURN",
@@ -725,7 +721,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                 players,
                 bases: newBases,
                 currentTurn: nextTurn,
-                winner: newWinner // <-- Send the victory flag over the network!
+                winner: newWinner
             });
         }
     };
