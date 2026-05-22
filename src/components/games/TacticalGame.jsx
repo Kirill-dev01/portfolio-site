@@ -328,14 +328,18 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     // --- 4. GAMEPLAY & LOGIC ENGINE ---
     // ==========================================
     const processTurnTransition = (currentFaction, currentUnits, currentPlayers, currentBases, isFromNetwork = false) => {
+        if (gameState !== 'PLAYING') return;
+
         let idx = activeFactions.indexOf(currentFaction);
         let nextFaction = activeFactions[(idx + 1) % activeFactions.length];
         let nextPlayer = { ...currentPlayers[nextFaction] };
         let newLogs = [`--- ${FACTIONS[nextFaction].name} TURN ---`];
         let nextBases = [...currentBases];
 
+        // --- 1. BASE CAPTURE ENGINE ---
         nextBases.forEach(base => {
             let occupant = currentUnits.find(u => u.x === base.x && u.y === base.y);
+            // Captures only happen if it's an INF unit!
             if (occupant && occupant.type === 'INF' && occupant.faction !== base.owner) {
                 if (occupant.faction === currentFaction) {
                     base.captureProgress -= 1;
@@ -351,12 +355,26 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
             }
         });
 
+        // --- 2. VICTORY CHECK ---
+        let newWinner = null;
+        const survivingFactions = activeFactions.filter(faction =>
+            nextBases.some(base => base.owner === faction)
+        );
+
+        if (survivingFactions.length === 1) {
+            newWinner = survivingFactions[0];
+            setWinner(newWinner);
+            setGameState('GAME_OVER');
+        }
+
+        // --- 3. ECONOMY & INCOME ---
         let oilCount = 0;
         oils.forEach(oil => { if (currentUnits.find(u => u.x === oil.x && u.y === oil.y && u.faction === nextFaction)) oilCount++; });
         const income = (oilCount * INCOME_RATES[nextPlayer.level]) + (nextBases.filter(b => b.owner === nextFaction).length * 50);
         nextPlayer.money += income;
         if (nextPlayer.isHuman) newLogs.push(`Income: +$${income}`);
 
+        // --- 4. UNIT AP RESET & SPAWNING ---
         let nextUnits = currentUnits.map(u => u.faction === nextFaction ? { ...u, ap: 1 } : u);
         let updatedQueue = [];
         nextPlayer.queue.forEach(item => {
@@ -369,7 +387,6 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
                 if (spawn) {
                     let stats = UNIT_STATS[item.type];
-                    // Using array length for ID instead of random to prevent network desync
                     nextUnits.push({ id: `${nextFaction}-U${nextUnits.length + 1}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
                     newLogs.push(`${item.type} deployed!`);
                 } else {
@@ -381,15 +398,22 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
         let updatedPlayers = { ...currentPlayers, [nextFaction]: nextPlayer };
 
+        // --- 5. FINALIZE & TRANSMIT ---
         setBases(nextBases);
         setPlayers(updatedPlayers);
         setUnits(nextUnits);
         setCurrentTurn(nextFaction);
         newLogs.reverse().forEach(addLog);
 
-        // Transmit the fully calculated new turn to the other player!
         if (!isFromNetwork && transmitData) {
-            transmitData({ action: "END_TURN", units: nextUnits, players: updatedPlayers, bases: nextBases, currentTurn: nextFaction });
+            transmitData({
+                action: "END_TURN",
+                units: nextUnits,
+                players: updatedPlayers,
+                bases: nextBases,
+                currentTurn: nextFaction,
+                winner: newWinner // The victory flag sent to the enemy!
+            });
         }
     };
 
@@ -666,64 +690,6 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
     const currentPlayer = players[currentTurn];
 
-    const handleEndTurn = () => {
-        if (currentTurn !== localFaction || gameState !== 'PLAYING') return;
-
-        // 1. DYNAMIC TURN CYCLING
-        const currentIndex = activeFactions.indexOf(currentTurn);
-        const nextTurn = activeFactions[(currentIndex + 1) % activeFactions.length];
-
-        // 2. BASE CAPTURE ENGINE
-        let newBases = bases.map(base => {
-            const occupyingUnit = units.find(u => u.x === base.x && u.y === base.y);
-
-            // MATCHED: Changed occupyingUnit.owner to occupyingUnit.faction
-            if (occupyingUnit && occupyingUnit.faction !== base.owner) {
-                const currentProgress = base.captureProgress || 0;
-
-                if (currentProgress + 1 >= 3) {
-                    addLog(`SYS: Sector at [${base.x}, ${base.y}] captured by ${occupyingUnit.faction}!`);
-                    return { ...base, owner: occupyingUnit.faction, captureProgress: 0 };
-                } else {
-                    addLog(`SYS: Securing base... [${currentProgress + 1}/3]`);
-                    return { ...base, captureProgress: currentProgress + 1 };
-                }
-            }
-            return { ...base, captureProgress: 0 };
-        });
-
-        // 3. DYNAMIC VICTORY CHECK
-        let newWinner = null;
-        const survivingFactions = activeFactions.filter(faction =>
-            newBases.some(base => base.owner === faction)
-        );
-
-        if (survivingFactions.length === 1) {
-            newWinner = survivingFactions[0];
-            setWinner(newWinner);
-            setGameState('GAME_OVER');
-        }
-
-        // 4. STANDARD TURN UPDATES
-        setBases(newBases);
-        setCurrentTurn(nextTurn);
-
-        // FIXED: Changed u.owner to u.faction so action points reload perfectly!
-        const resetUnits = units.map(u => u.faction === nextTurn ? { ...u, ap: 1 } : u);
-        setUnits(resetUnits);
-
-        if (transmitData) {
-            transmitData({
-                action: "END_TURN",
-                units: resetUnits,
-                players,
-                bases: newBases,
-                currentTurn: nextTurn,
-                winner: newWinner
-            });
-        }
-    };
-
     return (
         <div className="conquest-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '600px', background: '#111', padding: '10px', border: `1px solid ${FACTIONS[localFaction]?.color || '#555'}` }}>
@@ -768,7 +734,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                 ) : (
                     <div className="game-controls" style={{ marginTop: '20px' }}>
                         <button className="game-btn" onClick={() => setHqMenuOpen(true)}>[ HQ MENU ]</button>
-                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={handleEndTurn}>[ END TURN ]</button>
+                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
                     </div>
                 )
             ) : (
@@ -784,7 +750,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                         {winner === localFaction ? "VICTORY ACHIEVED" : "CRITICAL DEFEAT"}
                     </h1>
                     <p className="text-xl text-[#00FF41] mb-8 uppercase tracking-widest">
-                        {winner === 'P1' ? "RED_SWARM" : "CYAN_NET"} NOW CONTROLS ALL SECTORS.
+                        {FACTIONS[winner]?.name} NOW CONTROLS ALL SECTORS.
                     </p>
                     <button
                         onClick={() => window.location.reload()}
