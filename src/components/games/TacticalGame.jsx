@@ -43,6 +43,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
     const [selectedUnitId, setSelectedUnitId] = useState(null);
     const [hqMenuOpen, setHqMenuOpen] = useState(false);
+    const [selectedBuildLocation, setSelectedBuildLocation] = useState(null); // <-- ADD THIS LINE
     const [log, setLog] = useState([]);
 
     // Network Status
@@ -339,7 +340,6 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         // --- 1. BASE CAPTURE ENGINE ---
         nextBases.forEach(base => {
             let occupant = currentUnits.find(u => u.x === base.x && u.y === base.y);
-            // Captures only happen if it's an INF unit!
             if (occupant && occupant.type === 'INF' && occupant.faction !== base.owner) {
                 if (occupant.faction === currentFaction) {
                     base.captureProgress -= 1;
@@ -381,15 +381,29 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
             if (item.turnsLeft > 1) {
                 updatedQueue.push({ ...item, turnsLeft: item.turnsLeft - 1 });
             } else {
-                let ownedBases = nextBases.filter(b => b.owner === nextFaction);
                 let spawn = null;
-                for (let b of ownedBases) { spawn = getSpawnLoc(b.x, b.y, nextUnits); if (spawn) break; }
+
+                // NEW: Try to spawn at the EXACT base the player ordered it from
+                if (item.spawnX !== undefined && item.spawnY !== undefined) {
+                    spawn = getSpawnLoc(item.spawnX, item.spawnY, nextUnits);
+                }
+
+                // FALLBACK: If base is surrounded, or for AI (who doesn't pick bases), find ANY owned base
+                if (!spawn) {
+                    let ownedBases = nextBases.filter(b => b.owner === nextFaction);
+                    for (let b of ownedBases) { spawn = getSpawnLoc(b.x, b.y, nextUnits); if (spawn) break; }
+                }
 
                 if (spawn) {
                     let stats = UNIT_STATS[item.type];
-                    nextUnits.push({ id: `${nextFaction}-U${nextUnits.length + 1}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
-                    newLogs.push(`${item.type} deployed!`);
+                    if (stats) { // Safety check in case of bad data
+                        nextUnits.push({ id: `${nextFaction}-U${nextUnits.length + 1}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
+                        newLogs.push(`${item.type} deployed!`);
+                    } else {
+                        updatedQueue.push({ ...item, turnsLeft: 0 }); // hold if data is bad
+                    }
                 } else {
+                    // Base is completely surrounded, keep in queue for next turn
                     updatedQueue.push({ ...item, turnsLeft: 0 });
                 }
             }
@@ -412,7 +426,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                 players: updatedPlayers,
                 bases: nextBases,
                 currentTurn: nextFaction,
-                winner: newWinner // The victory flag sent to the enemy!
+                winner: newWinner
             });
         }
     };
@@ -564,7 +578,18 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         const cost = UNIT_COSTS[type];
         if (players[currentTurn].money < cost) { addLog("INSUFFICIENT FUNDS."); return; }
 
-        const updatedPlayers = { ...players, [currentTurn]: { ...players[currentTurn], money: players[currentTurn].money - cost, queue: [...players[currentTurn].queue, { type, turnsLeft: BUILD_TIMES[type] }] } };
+        // NEW: Find the exact base you clicked on, or default to your HQ if something goes wrong
+        const targetBase = selectedBuildLocation || bases.find(b => b.owner === currentTurn);
+
+        const updatedPlayers = {
+            ...players,
+            [currentTurn]: {
+                ...players[currentTurn],
+                money: players[currentTurn].money - cost,
+                // NEW: Save the specific X and Y coordinates to the production queue!
+                queue: [...players[currentTurn].queue, { type, turnsLeft: BUILD_TIMES[type], spawnX: targetBase?.x, spawnY: targetBase?.y }]
+            }
+        };
 
         setPlayers(updatedPlayers);
         addLog(`Construction started: ${type}.`);
@@ -733,7 +758,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                     </div>
                 ) : (
                     <div className="game-controls" style={{ marginTop: '20px' }}>
-                        <button className="game-btn" onClick={() => setHqMenuOpen(true)}>[ HQ MENU ]</button>
+                        <button className="game-btn" onClick={() => { setSelectedBuildLocation(null); setHqMenuOpen(true); }}>[ HQ MENU ]</button>
                         <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
                     </div>
                 )
