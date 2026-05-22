@@ -26,7 +26,8 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         'P1': { name: 'RED_SWARM', color: '#ff0055', hq: { x: 0, y: 0 } },
         'P2': { name: 'CYAN_NET', color: '#00eeff', hq: { x: 14, y: 14 } },
         'P3': { name: 'GREEN_OPS', color: '#33ff00', hq: { x: 14, y: 0 } },
-        'P4': { name: 'YELLOW_SUN', color: '#ffcc00', hq: { x: 0, y: 14 } }
+        'P4': { name: 'YELLOW_SUN', color: '#ffcc00', hq: { x: 0, y: 14 } },
+        'NEUTRAL': { name: 'ABANDONED HQ', color: '#aaaaaa', hq: { x: 7, y: 7 } }
     };
 
     const [gameState, setGameState] = useState('SETUP');
@@ -285,6 +286,9 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                 }
             });
 
+            // --- NEW: SPAWN THE NEUTRAL CENTER HQ ---
+            initBases.push({ id: `base-neutral`, x: FACTIONS['NEUTRAL'].hq.x, y: FACTIONS['NEUTRAL'].hq.y, owner: 'NEUTRAL', captureProgress: 3 });
+
             let newMap = {};
             let allOils = [];
             const centerStart = 5;
@@ -374,37 +378,54 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         nextPlayer.money += income;
         if (nextPlayer.isHuman) newLogs.push(`Income: +$${income}`);
 
-        // --- 4. UNIT AP RESET & SPAWNING ---
+        // --- 4. UNIT AP RESET & SPAWNING (SEQUENTIAL PER BASE) ---
         let nextUnits = currentUnits.map(u => u.faction === nextFaction ? { ...u, ap: 1 } : u);
         let updatedQueue = [];
+
+        // Group the queue by which base ordered the unit
+        let queuesByBase = {};
         nextPlayer.queue.forEach(item => {
-            if (item.turnsLeft > 1) {
-                updatedQueue.push({ ...item, turnsLeft: item.turnsLeft - 1 });
-            } else {
-                let spawn = null;
+            let key = `${item.spawnX}-${item.spawnY}`;
+            if (!queuesByBase[key]) queuesByBase[key] = [];
+            queuesByBase[key].push(item);
+        });
 
-                // NEW: Try to spawn at the EXACT base the player ordered it from
-                if (item.spawnX !== undefined && item.spawnY !== undefined) {
-                    spawn = getSpawnLoc(item.spawnX, item.spawnY, nextUnits);
-                }
+        // Only process the FIRST unit in line for each base
+        Object.keys(queuesByBase).forEach(key => {
+            let baseQueue = queuesByBase[key];
+            if (baseQueue.length > 0) {
+                let activeItem = baseQueue[0];
 
-                // FALLBACK: If base is surrounded, or for AI (who doesn't pick bases), find ANY owned base
-                if (!spawn) {
-                    let ownedBases = nextBases.filter(b => b.owner === nextFaction);
-                    for (let b of ownedBases) { spawn = getSpawnLoc(b.x, b.y, nextUnits); if (spawn) break; }
-                }
-
-                if (spawn) {
-                    let stats = UNIT_STATS[item.type];
-                    if (stats) { // Safety check in case of bad data
-                        nextUnits.push({ id: `${nextFaction}-U${nextUnits.length + 1}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: item.type });
-                        newLogs.push(`${item.type} deployed!`);
-                    } else {
-                        updatedQueue.push({ ...item, turnsLeft: 0 }); // hold if data is bad
-                    }
+                if (activeItem.turnsLeft > 1) {
+                    activeItem.turnsLeft -= 1;
+                    updatedQueue.push(activeItem); // Push active item
+                    for (let i = 1; i < baseQueue.length; i++) updatedQueue.push(baseQueue[i]); // Push the rest waiting
                 } else {
-                    // Base is completely surrounded, keep in queue for next turn
-                    updatedQueue.push({ ...item, turnsLeft: 0 });
+                    let spawn = getSpawnLoc(activeItem.spawnX, activeItem.spawnY, nextUnits);
+
+                    // Fallback for older AI that doesn't target bases
+                    if (!spawn && activeItem.spawnX === undefined) {
+                        let ownedBases = nextBases.filter(b => b.owner === nextFaction);
+                        for (let b of ownedBases) { spawn = getSpawnLoc(b.x, b.y, nextUnits); if (spawn) break; }
+                    }
+
+                    if (spawn) {
+                        let stats = UNIT_STATS[activeItem.type];
+                        if (stats) {
+                            nextUnits.push({ id: `${nextFaction}-${Math.floor(Math.random() * 10000)}`, x: spawn.x, y: spawn.y, faction: nextFaction, hp: stats.maxHp, maxHp: stats.maxHp, ap: 1, mp: stats.mp, type: activeItem.type });
+                            newLogs.push(`${activeItem.type} deployed!`);
+                            // Push the remaining items in line (the active one is removed since it spawned)
+                            for (let i = 1; i < baseQueue.length; i++) updatedQueue.push(baseQueue[i]);
+                        } else {
+                            updatedQueue.push(activeItem);
+                            for (let i = 1; i < baseQueue.length; i++) updatedQueue.push(baseQueue[i]);
+                        }
+                    } else {
+                        // Base is surrounded! Halt production.
+                        activeItem.turnsLeft = 0;
+                        updatedQueue.push(activeItem);
+                        for (let i = 1; i < baseQueue.length; i++) updatedQueue.push(baseQueue[i]);
+                    }
                 }
             }
         });
@@ -470,19 +491,41 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                     let unownedOils = oils.filter(o => !nextUnits.find(u => u.x === o.x && u.y === o.y && u.faction === currentTurn));
                     let enemyBases = bases.filter(b => b.owner !== currentTurn);
 
-                    let target = (enemyBases.length > 0) ? enemyBases[0] : null;
-                    if (unownedOils.length > 0 && setupConfig.difficulty !== 'HARD') target = unownedOils[0];
-                    if (setupConfig.difficulty === 'HARD' && enemies.length > 0) target = enemies[0];
+                    // --- NEW: ADVANCED AI TARGETING ---
+                    let target = null;
+                    let minTargetDist = Infinity;
+
+                    // 1. Always prioritize the CLOSEST enemy base (Instinct to recapture!)
+                    enemyBases.forEach(b => {
+                        let d = getDistance(unit.x, unit.y, b.x, b.y);
+                        if (d < minTargetDist) { minTargetDist = d; target = b; }
+                    });
+
+                    // 2. If easy/normal, get distracted by nearby oil
+                    if (setupConfig.difficulty !== 'HARD') {
+                        unownedOils.forEach(o => {
+                            let d = getDistance(unit.x, unit.y, o.x, o.y);
+                            if (d < minTargetDist) { minTargetDist = d; target = o; }
+                        });
+                    } else {
+                        // 3. If hard, actively hunt the closest enemy units
+                        enemies.forEach(e => {
+                            let d = getDistance(unit.x, unit.y, e.x, e.y);
+                            if (d < minTargetDist) { minTargetDist = d; target = e; }
+                        });
+                    }
+
                     if (!target) return;
 
                     let validMoves = getValidMoves(unit, nextUnits, mapData);
                     let bestMove = { x: unit.x, y: unit.y };
-                    let minDist = getDistance(unit.x, unit.y, target.x, target.y);
+                    let currentDist = getDistance(unit.x, unit.y, target.x, target.y);
 
+                    // --- RESTORED: Evaluate all possible steps to find the one closest to the target ---
                     for (let coords in validMoves) {
                         let [vx, vy] = coords.split('-').map(Number);
                         let d = getDistance(vx, vy, target.x, target.y);
-                        if (d < minDist) { minDist = d; bestMove = { x: vx, y: vy }; }
+                        if (d < currentDist) { currentDist = d; bestMove = { x: vx, y: vy }; }
                     }
 
                     unit.x = bestMove.x; unit.y = bestMove.y; unit.ap = 0;
@@ -745,7 +788,10 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
             {currentTurn === localFaction ? (
                 hqMenuOpen ? (
                     <div className="hq-menu" style={{ maxWidth: '600px' }}>
-                        <h3 style={{ margin: 0, color: currentPlayer.color }}>-- HQ COMMAND --</h3>
+                        {/* --- NEW: SHOW EXACT COORDINATES --- */}
+                        <h3 style={{ margin: 0, color: currentPlayer.color }}>
+                            -- HQ COMMAND [{selectedBuildLocation ? `${selectedBuildLocation.x}, ${selectedBuildLocation.y}` : `${bases.find(b => b.owner === currentTurn)?.x}, ${bases.find(b => b.owner === currentTurn)?.y}`}] --
+                        </h3>
                         <p style={{ margin: '5px 0' }}>Funds: ${currentPlayer.money}</p>
                         {currentPlayer.queue.length > 0 && (<div style={{ color: '#ffcc00', margin: '5px 0' }}>BUILDING: {currentPlayer.queue.map(q => `${q.type}(${q.turnsLeft}T)`).join(', ')}</div>)}
                         <div className="hq-menu-buttons">
