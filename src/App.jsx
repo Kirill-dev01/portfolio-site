@@ -305,37 +305,57 @@ function App() {
   const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
-    // ONLY connect if they opened the game AND they have a room code
-    if (currentView === 'GAME_TACTICAL' && activeRoom) {
+    let reconnectTimer;
+    let isComponentMounted = true; // Prevents memory leaks if you leave the page
 
-      // We inject the activeRoom code right into the URL!
-      ws.current = new WebSocket(`wss://tactical-multiplayer-server.onrender.com/ws/match/${activeRoom}`);
+    const connectToGameServer = () => {
+      // ONLY connect if they opened the game AND they have a room code
+      if (currentView === 'GAME_TACTICAL' && activeRoom) {
 
-      ws.current.onopen = () => {
-        console.log(`SYS: Connected to Secure Room: ${activeRoom}`);
-        setIsOnline(true);
-      };
+        ws.current = new WebSocket(`wss://tactical-multiplayer-server.onrender.com/ws/match/${activeRoom}`);
 
-      ws.current.onmessage = (event) => {
-        const incomingData = JSON.parse(event.data);
-        console.log("SATELLITE INTERCEPT:", incomingData);
+        ws.current.onopen = () => {
+          if (!isComponentMounted) return;
+          console.log(`SYS: Connected to Secure Room: ${activeRoom}`);
+          setIsOnline(true);
+        };
 
-        // --- ADD IT RIGHT HERE! ---
-        window.dispatchEvent(new MessageEvent("tactical_server_msg", { data: event.data }));
-      };
+        ws.current.onmessage = (event) => {
+          if (!isComponentMounted) return;
+          const incomingData = JSON.parse(event.data);
+          // console.log("SATELLITE INTERCEPT:", incomingData); // Optional: keep commented out to reduce console spam
 
-      ws.current.onclose = () => {
-        console.log("SYS: Connection Lost");
-        setIsOnline(false);
-      };
+          window.dispatchEvent(new MessageEvent("tactical_server_msg", { data: event.data }));
+        };
 
-      // Cleanup: disconnect when leaving the game screen
-      return () => {
-        if (ws.current) {
-          ws.current.close();
-        }
-      };
-    }
+        ws.current.onclose = () => {
+          if (!isComponentMounted) return;
+          console.log("SYS: Connection Lost. Attempting to re-establish datalink in 3 seconds...");
+          setIsOnline(false);
+
+          // --- THE AUTO-RECONNECT ENGINE ---
+          reconnectTimer = setTimeout(connectToGameServer, 3000);
+        };
+
+        ws.current.onerror = (err) => {
+          if (!isComponentMounted) return;
+          console.error("SYS: WebSocket error detected.", err);
+          ws.current.close(); // Force the socket to close so the auto-reconnect triggers!
+        };
+      }
+    };
+
+    // Kick off the initial connection
+    connectToGameServer();
+
+    // Cleanup: disconnect and kill timers when leaving the game screen
+    return () => {
+      isComponentMounted = false;
+      clearTimeout(reconnectTimer);
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
   }, [currentView, activeRoom]);
 
   // Transmission function to send moves to the Python server
