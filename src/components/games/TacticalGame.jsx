@@ -59,14 +59,24 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     const addLog = (msg) => setLog(prev => [msg, ...prev].slice(0, 5));
     const getDistance = (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2);
 
+
     // ==========================================
     // --- 1. NETWORK COMMAND FUNCTIONS ---
     // ==========================================
-    const createPrivate = () => {
+    const startSinglePlayer = () => {
+        const newCode = "SP-" + Math.floor(Math.random() * 9000 + 1000); // "SP" for Single Player
+        setIsHost(true);
+        setLocalFaction('P1');
+        setSetupConfig(prev => ({ ...prev, humans: 1 })); // Only YOU are human!
+        setActiveRoom(newCode);
+    };
+
+    const hostMultiplayer = () => {
         const newCode = "OP-" + Math.floor(Math.random() * 9000 + 1000);
         setIsHost(true);
-        setLocalFaction('P1'); // Host is always Player 1
-        setSetupConfig(prev => ({ ...prev, humans: 2 })); // Force 2 Humans for multiplayer
+        setLocalFaction('P1');
+        // Ensure at least 2 humans for a multiplayer lobby
+        setSetupConfig(prev => ({ ...prev, humans: Math.max(2, prev.humans) }));
         setActiveRoom(newCode);
     };
 
@@ -79,25 +89,6 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
         }
     };
 
-    const searchPublic = () => {
-        setIsSearching(true);
-        const mmWs = new WebSocket(`wss://tactical-multiplayer-server.onrender.com/ws/matchmake`);
-
-        mmWs.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.action === "MATCH_FOUND") {
-                setIsHost(data.is_host || false);
-                setLocalFaction(data.is_host ? 'P1' : 'P2');
-                setSetupConfig(prev => ({ ...prev, humans: 2 })); // Force 2 Humans
-                setActiveRoom(data.room_id);
-                setIsSearching(false);
-
-                if (!data.is_host) {
-                    setGameState('WAITING_FOR_SYNC');
-                }
-            }
-        };
-    };
 
     const getDamage = (attacker, defender, currentMap) => {
         let baseDmg = UNIT_STATS[attacker.type].atk;
@@ -669,54 +660,67 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
                 <div style={{ background: '#111', border: '1px solid #33ff00', padding: '20px', width: '350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
 
-                    {isSearching ? (
-                        <div style={{ color: '#00eeff', textAlign: 'center', padding: '20px 0' }}>
-                            <h3 style={{ margin: '0 0 10px 0' }}>[ SEARCHING UPLINKS ]</h3>
-                            {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
-                        </div>
-                    ) : gameState === 'WAITING_FOR_SYNC' ? (
+                    {gameState === 'WAITING_FOR_SYNC' ? (
                         <div style={{ color: '#ffcc00', textAlign: 'center', padding: '20px 0' }}>
                             <h3 style={{ margin: '0 0 10px 0' }}>[ SYNCHRONIZING ]</h3>
                             {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
                         </div>
                     ) : (
                         <>
-                            {/* --- RESTORED CONFIGURATION MENU --- */}
-                            <div style={{ background: '#050505', padding: '10px', border: '1px dashed #555', marginBottom: '10px' }}>
-                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>TOTAL FACTIONS:</label>
-                                <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
-                                    <option value={2}>2 FACTIONS</option>
-                                    <option value={3}>3 FACTIONS</option>
-                                    <option value={4}>4 FACTIONS</option>
-                                </select>
+                            {/* --- SINGLE PLAYER PANEL --- */}
+                            <div style={{ background: '#050505', padding: '15px', border: '1px solid #33ff00', marginBottom: '15px' }}>
+                                <h3 style={{ color: '#33ff00', marginTop: 0, borderBottom: '1px dashed #33ff00', paddingBottom: '5px' }}>[ SINGLE PLAYER ]</h3>
 
-                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>NETWORK HUMANS:</label>
-                                <select value={setupConfig.humans} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
-                                    {[...Array(setupConfig.totalPlayers)].map((_, i) => (
-                                        <option key={i + 1} value={i + 1}>{i + 1} HUMAN(S)</option>
-                                    ))}
+                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>TOTAL FACTIONS:</label>
+                                <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
+                                    <option value={2}>1v1 (2 FACTIONS)</option>
+                                    <option value={3}>1v2 (3 FACTIONS)</option>
+                                    <option value={4}>1v3 (4 FACTIONS)</option>
                                 </select>
 
                                 <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>AI DIFFICULTY:</label>
-                                <select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%' }}>
+                                <select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%', marginBottom: '15px' }}>
                                     <option value="EASY">EASY</option>
                                     <option value="NORMAL">NORMAL</option>
                                     <option value="HARD">HARD</option>
                                 </select>
-                            </div>
-                            {/* ------------------------------------ */}
 
-                            <button className="game-btn" style={{ borderColor: '#33ff00', color: '#33ff00' }} onClick={createPrivate}>[ HOST PRIVATE OPERATION ]</button>
-
-                            <hr style={{ borderTop: '1px dashed #555', width: '100%', margin: '5px 0' }} />
-
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <input type="text" placeholder="ENTER OP-CODE" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value)} style={{ background: '#000', color: '#33ff00', border: '1px solid #555', padding: '10px', width: '60%', fontFamily: "'VT323', monospace", fontSize: '1.2rem', textTransform: 'uppercase' }} />
-                                <button className="game-btn" style={{ width: '40%', padding: '10px 0' }} onClick={joinPrivate}>[ JOIN ]</button>
+                                <button className="game-btn" style={{ borderColor: '#33ff00', color: '#33ff00', width: '100%' }} onClick={startSinglePlayer}>[ LAUNCH LOCAL OPERATION ]</button>
                             </div>
 
-                            <button className="game-btn" style={{ borderColor: '#00eeff', color: '#00eeff' }} onClick={searchPublic}>[ PUBLIC MATCHMAKING ]</button>
-                            <button className="game-btn" style={{ borderColor: '#555', color: '#555', marginTop: '10px' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
+                            {/* --- MULTIPLAYER PANEL --- */}
+                            <div style={{ background: '#050505', padding: '15px', border: '1px solid #00eeff', marginBottom: '10px' }}>
+                                <h3 style={{ color: '#00eeff', marginTop: 0, borderBottom: '1px dashed #00eeff', paddingBottom: '5px' }}>[ MULTIPLAYER ]</h3>
+
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>FACTIONS:</label>
+                                        <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%' }}>
+                                            <option value={2}>2</option>
+                                            <option value={3}>3</option>
+                                            <option value={4}>4</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>HUMANS:</label>
+                                        <select value={Math.max(2, setupConfig.humans)} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%' }}>
+                                            {[...Array(setupConfig.totalPlayers)].map((_, i) => {
+                                                if (i + 1 >= 2) return <option key={i + 1} value={i + 1}>{i + 1}</option>;
+                                                return null;
+                                            })}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button className="game-btn" style={{ borderColor: '#00eeff', color: '#00eeff', width: '100%', marginBottom: '15px' }} onClick={hostMultiplayer}>[ HOST SECURE LOBBY ]</button>
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <input type="text" placeholder="ENTER OP-CODE" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value)} style={{ background: '#000', color: '#00eeff', border: '1px solid #555', padding: '10px', width: '60%', fontFamily: "'VT323', monospace", fontSize: '1.2rem', textTransform: 'uppercase' }} />
+                                    <button className="game-btn" style={{ width: '40%', padding: '10px 0', borderColor: '#00eeff', color: '#00eeff' }} onClick={joinPrivate}>[ JOIN ]</button>
+                                </div>
+                            </div>
+
+                            <button className="game-btn" style={{ borderColor: '#555', color: '#555', marginTop: '10px', width: '100%' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
                         </>
                     )}
                 </div>
