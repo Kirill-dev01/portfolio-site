@@ -89,47 +89,37 @@ html {
   background-size: 100% 4px, 3px 100%;
 }
 
-/* The KIRILL_OS text below the dragon */
+/* --- The os-title text (Updated: Yellow Color + Flashing Animation) --- */
+/* Find .os-title and make sure it looks like this (Notice the animation line is gone!) */
 .os-title {
-  font-size: 3.5rem;
+  font-size: 3rem;
   margin-top: 20px;
-  border: 2px dashed #33ff00;
+  border: 2px dashed #ffcc00;
   padding: 10px 30px;
   background-color: #000;
-  animation: blink 2s infinite;
-
-  /* NEW: Keeps the title safely in the center of the screen! */
   align-self: center;
+  color: #ffcc00;
 }
 
-/* Add it to your dragon too! */
-.ascii-dragon {
-  font-family: 'VT323', monospace;
-  font-size: 1.5rem;
-  line-height: 1.1;
-  margin: 0;
-  text-shadow: 0 0 8px #33ff00;
-
-  /* NEW: Keeps the dragon safely in the center! */
-  align-self: center;
+/* --- NEW: Individual Glitch Letters --- */
+.glitch-letter {
+  /* Using step-start makes it snap ON/OFF without fading */
+  animation: letter-flash step-start infinite;
 }
 
-/* (Optional) If you have an .image-placeholder class for the dragon, add it there too: */
-.image-placeholder {
-  align-self: center;
-}
+@keyframes letter-flash {
 
-/* A classic retro blinking cursor effect */
-@keyframes blink {
-
+  /* Letters stay visible 80% of the time, and quickly flicker off 20% of the time */
   0%,
-  49% {
-    border-color: #33ff00;
+  80% {
+    opacity: 1;
+    text-shadow: 0 0 10px #ffcc00;
   }
 
-  50%,
+  81%,
   100% {
-    border-color: transparent;
+    opacity: 0;
+    text-shadow: none;
   }
 }
 

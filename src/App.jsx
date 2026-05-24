@@ -7,8 +7,9 @@ import SnakeGame from './components/games/SnakeGame';
 // RETRO / TERMINAL COMPONENTS
 // =========================================
 
-const Typewriter = ({ text, delay = 0, speed = 40 }) => {
+const Typewriter = ({ text, delay = 0, speed = 40, randomBlink = false }) => {
   const [displayText, setDisplayText] = useState('');
+
   useEffect(() => {
     let timeout;
     let i = 0;
@@ -29,6 +30,32 @@ const Typewriter = ({ text, delay = 0, speed = 40 }) => {
       clearInterval(timeout);
     };
   }, [text, delay, speed]);
+
+  // NEW: If randomBlink is true, render each letter with its own chaotic timer!
+  if (randomBlink) {
+    return (
+      <span>
+        {displayText.split('').map((char, index) => {
+          // Math trick to create varied but stable timers for each letter
+          const blinkDelay = (index * 0.3) % 2;
+          const blinkDuration = 0.5 + ((index * 0.7) % 2);
+          return (
+            <span
+              key={index}
+              className="glitch-letter"
+              style={{
+                animationDelay: `${blinkDelay}s`,
+                animationDuration: `${blinkDuration}s`
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
   return <span>{displayText}</span>;
 };
 
@@ -275,22 +302,27 @@ const DetectiveBoard = () => {
 const ArcadeMenu = ({ setCurrentView }) => {
   return (
     <div className="arcade-menu">
-      <div className="game-title">
-        <Typewriter text="KIRILL_OS // ENTERTAINMENT_SYSTEM" speed={50} />
+
+      {/* 👇 Changed class to os-title and updated the text 👇 */}
+      <div className="os-title" style={{ marginBottom: '40px', textAlign: 'center' }}>
+        <Typewriter text="ENTERTAINMENT_SYSTEM // UNDER CONSTRUCTION" speed={50} />
       </div>
+
       <button className="menu-button" style={{ fontSize: '2rem' }} onClick={() => setCurrentView('GAME_TACTICAL')}>
         <Typewriter text="[01] TACTICAL_STRIKE (Turn-Based)" delay={500} />
       </button>
+
       <button className="menu-button" style={{ fontSize: '2rem' }} onClick={() => setCurrentView('GAME_CONQUEST')}>
         <Typewriter text="[02] SECTOR_CONQUEST (Auto-Sim)" delay={1000} />
       </button>
+
       <button className="menu-button" style={{ fontSize: '2rem', color: '#555', borderColor: '#555', cursor: 'not-allowed' }}>
         <Typewriter text="[03] CYBER_PONG (In Development)" delay={1500} />
       </button>
+
     </div>
   );
 };
-
 
 // =========================================
 // MAIN APP COMPONENT
@@ -412,7 +444,8 @@ function App() {
           <>
             <div className="image-placeholder" style={{ height: '200px' }}></div>
             <div className="os-title">
-              <Typewriter text="KIRILL_OS" delay={500} speed={150} />
+              {/* Fixed the typo and turned on the random blink effect! */}
+              <Typewriter text="UNDER CONSTRUCTION" delay={500} speed={150} randomBlink={true} />
             </div>
           </>
         )}
