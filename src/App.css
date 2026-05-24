@@ -1,21 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
+/* CRITICAL: Smashes Vite's default 1280px invisible wall */
+#root {
+  max-width: 100% !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* CRITICAL: Forces padding to stay INSIDE the 100% width */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Resetting the page to be a full-screen dark terminal */
 body,
 html {
   margin: 0;
   padding: 0;
   background-color: #050505;
-  /* Matches your retro theme */
   color: #33ff00;
+  overflow-x: hidden;
 }
-
 
 .retro-layout {
   display: flex;
   min-height: 100vh;
-  /* <-- THE FIX: Now it can stretch downwards! */
   background: #050505;
+  width: 100%;
+  /* <-- Add this! */
 }
 
 /* The Vertical Sidebar */
@@ -64,25 +79,14 @@ html {
   display: flex;
   flex-direction: column;
 
-  /* CHANGE: This moves the content to the top instead of the middle */
   justify-content: flex-start;
-  align-items: center;
+  /* CHANGE THIS: from 'center' to 'flex-start' so the game snaps to the left! */
+  align-items: flex-start;
 
-  /* NEW: This pushes it down just a bit so it aligns nicely with your SYS_MENU */
   padding-top: 60px;
-
   position: relative;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   background-size: 100% 4px, 3px 100%;
-}
-
-/* The new ASCII Dragon style */
-.ascii-dragon {
-  font-family: 'VT323', monospace;
-  font-size: 1.5rem;
-  line-height: 1.1;
-  margin: 0;
-  text-shadow: 0 0 8px #33ff00;
 }
 
 /* The KIRILL_OS text below the dragon */
@@ -93,6 +97,26 @@ html {
   padding: 10px 30px;
   background-color: #000;
   animation: blink 2s infinite;
+
+  /* NEW: Keeps the title safely in the center of the screen! */
+  align-self: center;
+}
+
+/* Add it to your dragon too! */
+.ascii-dragon {
+  font-family: 'VT323', monospace;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  margin: 0;
+  text-shadow: 0 0 8px #33ff00;
+
+  /* NEW: Keeps the dragon safely in the center! */
+  align-self: center;
+}
+
+/* (Optional) If you have an .image-placeholder class for the dragon, add it there too: */
+.image-placeholder {
+  align-self: center;
 }
 
 /* A classic retro blinking cursor effect */

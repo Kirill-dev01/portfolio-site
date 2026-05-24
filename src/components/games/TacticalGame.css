@@ -3,9 +3,8 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* <-- This is the magic line that pushes it Left */
-    padding-left: 350px;
-    /* <-- Adds a nice gap so it doesn't touch the green line */
+    padding-left: 40px;
+    /* <-- REDUCED to 40px so it fits nicely */
     gap: 20px;
     margin-top: 20px;
     width: 100%;
@@ -13,7 +12,6 @@
 
 .tactical-board {
     display: inline-grid;
-    /* Change both of these 10s to 15s! */
     grid-template-columns: repeat(15, 40px);
     grid-template-rows: repeat(15, 40px);
     gap: 2px;
@@ -125,7 +123,6 @@
     width: 60%;
     height: 60%;
     background: #ffcc00;
-    /* Yellow oil */
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -141,7 +138,7 @@
     display: flex;
     justify-content: space-between;
     width: 100%;
-    max-width: 450px;
+    max-width: 700px;
     margin-bottom: 15px;
     font-size: 1.3rem;
     background: rgba(0, 0, 0, 0.8);
@@ -151,7 +148,7 @@
 
 .hq-menu {
     width: 100%;
-    max-width: 450px;
+    max-width: 700px;
     background: #111;
     border: 1px dashed #33ff00;
     padding: 15px;
@@ -175,19 +172,42 @@
 
 .tac-cell.swamp {
     background: #1a3300;
-    /* Murky green/brown */
     box-shadow: inset 0 0 10px #000;
 }
 
 .tac-cell.mid_mtn {
     background: #444;
-    /* Rock grey */
     border: 1px solid #222;
 }
 
 .tac-cell.high_mtn {
     background: #ddd;
-    /* Snow-capped white/grey */
     border: 1px solid #888;
     box-shadow: inset 0 0 8px #555;
+}
+
+.command-btn {
+    background: #0a0a0a;
+    border: 2px solid #33ff00;
+    color: #33ff00;
+    font-family: 'VT323', monospace;
+    font-size: 1.6rem;
+    padding: 15px 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 0 5px rgba(51, 255, 0, 0.2);
+    width: 100%;
+    text-align: center;
+    letter-spacing: 2px;
+
+    /* --- NEW: Forces text to stay on a single line! --- */
+    white-space: nowrap;
+}
+
+.command-btn:hover {
+    background: #33ff00;
+    color: #000;
+    box-shadow: 0 0 15px rgba(51, 255, 0, 0.5);
+    transform: translateY(-2px);
 }

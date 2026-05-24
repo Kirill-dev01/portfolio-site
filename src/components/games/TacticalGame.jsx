@@ -645,7 +645,7 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
     // ==========================================
     if (gameState === 'SETUP' || gameState === 'WAITING_FOR_SYNC') {
         return (
-            <div className="conquest-container" style={{ alignItems: 'center' }}>
+            <div className="conquest-container">
                 <h2>SYS_INIT // NETWORK COMMAND</h2>
                 <div style={{ marginBottom: '10px', color: isOnline ? '#33ff00' : 'red', fontFamily: 'monospace' }}>
                     SATELLITE LINK: {isOnline ? "ESTABLISHED" : "OFFLINE"}
@@ -764,85 +764,103 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
 
     return (
         <div className="conquest-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '600px', background: '#111', padding: '10px', border: `1px solid ${FACTIONS[localFaction]?.color || '#555'}` }}>
-                {activeFactions.map(f => (
-                    <div key={f} style={{ color: FACTIONS[f].color, textAlign: 'center', opacity: currentTurn === f ? 1 : 0.4 }}>
-                        <strong>{FACTIONS[f].name}</strong> {localFaction === f && "(YOU)"}<br />
-                        ${players[f].money} | L{players[f].level}
-                    </div>
-                ))}
-            </div>
 
-            <div className="turn-indicator" style={{ color: currentPlayer?.color, textAlign: 'center', margin: '10px 0' }}>
-                <h3>{currentTurn === localFaction ? `>> YOUR COMMAND (${FACTIONS[currentTurn].name}) <<` : `>> ${FACTIONS[currentTurn].name} THINKING... <<`}</h3>
-            </div>
+            {/* --- MASTER GAME WRAPPER (Forces perfect edge alignment) --- */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '1150px', gap: '10px' }}>
+                {/* --- TOP BAR: Factions Bar --- */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', background: '#111', padding: '10px', border: `1px solid ${FACTIONS[localFaction]?.color || '#555'}` }}>
+                    {activeFactions.map(f => (
+                        <div key={f} style={{ color: FACTIONS[f].color, textAlign: 'center', opacity: currentTurn === f ? 1 : 0.4 }}>
+                            <strong>{FACTIONS[f].name}</strong> {localFaction === f && "(YOU)"}<br />
+                            ${players[f].money} | L{players[f].level}
+                        </div>
+                    ))}
+                </div>
 
-            <div className="tactical-board" style={{ opacity: currentTurn === localFaction ? 1 : 0.6 }}>
-                {cells}
-            </div>
+                {/* --- TURN INDICATOR --- */}
+                <div className="turn-indicator" style={{ color: currentPlayer?.color, textAlign: 'left', width: '100%', margin: '5px 0' }}>
+                    <h3 style={{ margin: 0 }}>{currentTurn === localFaction ? `>> YOUR COMMAND (${FACTIONS[currentTurn].name}) <<` : `>> ${FACTIONS[currentTurn].name} THINKING... <<`}</h3>
+                </div>
 
-            <div style={{ width: '100%', maxWidth: '600px', background: '#050505', border: '1px dashed #555', padding: '10px', marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', textAlign: 'center', fontSize: '0.85rem', color: '#aaa', fontFamily: "'VT323', monospace" }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell plain" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>FIELD<br />1 MP</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell swamp" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>SWAMP<br />2 MP | +20% DEF</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell mid_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>HILLS<br />1 MP | +10% ALL</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell high_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>MOUNTAIN<br />2 MP | +20% ALL</div></div>
-            </div>
+                {/* --- TWO COLUMN DASHBOARD LAYOUT --- */}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '30px', alignItems: 'flex-start', width: '100%' }}>
 
-            {/* UI LOCK: Only show controls if it is actually YOUR turn! */}
-            {currentTurn === localFaction ? (
-                hqMenuOpen ? (
-                    <div className="hq-menu" style={{ maxWidth: '600px' }}>
-                        {/* --- NEW: SHOW EXACT COORDINATES --- */}
-                        <h3 style={{ margin: 0, color: currentPlayer.color }}>
-                            -- HQ COMMAND [{selectedBuildLocation ? `${selectedBuildLocation.x}, ${selectedBuildLocation.y}` : `${bases.find(b => b.owner === currentTurn)?.x}, ${bases.find(b => b.owner === currentTurn)?.y}`}] --
-                        </h3>
-                        <p style={{ margin: '5px 0' }}>Funds: ${currentPlayer.money}</p>
-                        {currentPlayer.queue.length > 0 && (<div style={{ color: '#ffcc00', margin: '5px 0' }}>BUILDING: {currentPlayer.queue.map(q => `${q.type}(${q.turnsLeft}T)`).join(', ')}</div>)}
-                        <div className="hq-menu-buttons">
-                            <button className="game-btn" onClick={() => buyUnit('INF')}>INF ($100)</button>
-                            <button className="game-btn" onClick={() => buyUnit('TNK')}>TNK ($250)</button>
-                            <button className="game-btn" onClick={() => buyUnit('AIR')}>AIR ($400)</button>
-                            <button className="game-btn" onClick={upgradeHq}>UPG Lvl {currentPlayer.level + 1}</button>
-                            <button className="game-btn" onClick={() => setHqMenuOpen(false)}>CLOSE</button>
+                    {/* LEFT COLUMN: The Board & Legend (approx 640px wide) */}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div className="tactical-board" style={{ opacity: currentTurn === localFaction ? 1 : 0.6, margin: '0 0 10px 0' }}>
+                            {cells}
+                        </div>
+
+                        <div style={{ width: '100%', background: '#050505', border: '1px dashed #555', padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', textAlign: 'center', fontSize: '0.85rem', color: '#aaa', fontFamily: "'VT323', monospace" }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell plain" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>FIELD<br />1 MP</div></div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell swamp" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>SWAMP<br />2 MP | +20% DEF</div></div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell mid_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>HILLS<br />1 MP | +10% ALL</div></div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}><div className="tac-cell high_mtn" style={{ width: '20px', height: '20px', border: '1px solid #33ff00' }}></div><div>MOUNTAIN<br />2 MP | +20% ALL</div></div>
                         </div>
                     </div>
-                ) : (
-                    <div className="game-controls" style={{ marginTop: '20px' }}>
-                        <button className="game-btn" onClick={() => { setSelectedBuildLocation(null); setHqMenuOpen(true); }}>[ HQ MENU ]</button>
-                        <button className="game-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
+
+                    {/* RIGHT COLUMN: Controls & Combat Log (approx 310px wide) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '280px', gap: '20px' }}>
+
+                        {/* UI LOCK: Only show controls if it is actually YOUR turn! */}
+                        {currentTurn === localFaction ? (
+                            hqMenuOpen ? (
+                                <div className="hq-menu" style={{ width: '100%', margin: 0, padding: '20px', maxWidth: 'none' }}>
+                                    {/* --- EXACT COORDINATES --- */}
+                                    <h3 style={{ margin: 0, color: currentPlayer.color, fontSize: '1.4rem' }}>
+                                        -- HQ COMMAND [{selectedBuildLocation ? `${selectedBuildLocation.x}, ${selectedBuildLocation.y}` : `${bases.find(b => b.owner === currentTurn)?.x}, ${bases.find(b => b.owner === currentTurn)?.y}`}] --
+                                    </h3>
+                                    <p style={{ margin: '10px 0', fontSize: '1.6rem', color: '#fff' }}>Funds: <span style={{ color: '#33ff00' }}>${currentPlayer.money}</span></p>
+                                    {currentPlayer.queue.length > 0 && (<div style={{ color: '#ffcc00', margin: '10px 0', fontSize: '1.2rem' }}>BUILDING: {currentPlayer.queue.map(q => `${q.type}(${q.turnsLeft}T)`).join(', ')}</div>)}
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+                                        <button className="command-btn" onClick={() => buyUnit('INF')}>INF ($100)</button>
+                                        <button className="command-btn" onClick={() => buyUnit('TNK')}>TNK ($250)</button>
+                                        <button className="command-btn" onClick={() => buyUnit('AIR')}>AIR ($400)</button>
+                                        <button className="command-btn" style={{ borderColor: '#ffcc00', color: '#ffcc00' }} onClick={upgradeHq}>UPG Lvl {currentPlayer.level + 1}</button>
+                                        <button className="command-btn" style={{ borderColor: '#555', color: '#555' }} onClick={() => setHqMenuOpen(false)}>CLOSE</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="game-controls" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <button className="command-btn" onClick={() => { setSelectedBuildLocation(null); setHqMenuOpen(true); }}>[ HQ MENU ]</button>
+                                    <button className="command-btn" style={{ borderColor: currentPlayer.color, color: currentPlayer.color, boxShadow: `0 0 10px ${currentPlayer.color}44` }} onClick={() => processTurnTransition(currentTurn, units, players, bases, false)}>[ END TURN ]</button>
+                                </div>
+                            )
+                        ) : (
+                            <div className="game-controls" style={{ border: '1px dashed #555', color: '#555', padding: '20px', textAlign: 'center', fontSize: '1.4rem', fontFamily: 'monospace' }}>
+                                [ AWAITING ENEMY COMMANDER... ]
+                            </div>
+                        )}
+
+                        {/* SYS.LOG moved right under the buttons */}
+                        <div style={{ width: '100%', flexGrow: 1, border: '1px dashed #33ff00', padding: '15px', background: '#000', minHeight: '200px' }}>
+                            <h4 style={{ margin: '0 0 10px 0', color: '#33ff00', borderBottom: '1px dashed #33ff00', paddingBottom: '5px', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '1.4rem' }}>SYS.LOG</h4>
+                            {log.map((msg, i) => <div key={i} style={{ color: i === 0 ? '#fff' : '#555', fontFamily: "'VT323', monospace", fontSize: '1.2rem', marginBottom: '5px' }}>{msg}</div>)}
+                        </div>
                     </div>
-                )
-            ) : (
-                <div className="game-controls" style={{ marginTop: '20px', border: '1px dashed #555', color: '#555', padding: '10px' }}>
-                    [ AWAITING ENEMY COMMANDER... ]
                 </div>
-            )}
+            </div>
 
             {/* --- VICTORY OVERLAY --- */}
             {gameState === 'GAME_OVER' && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90 border-4 border-[#00FF41]">
-                    <h1 className={`text-6xl font-bold mb-4 animate-pulse ${winner === localFaction ? 'text-[#00FF41]' : 'text-red-500'}`}>
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90 border-4 border-[#00FF41]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <h1 className={`text-6xl font-bold mb-4 animate-pulse ${winner === localFaction ? 'text-[#00FF41]' : 'text-red-500'}`} style={{ fontSize: '4rem', color: winner === localFaction ? '#33ff00' : 'red' }}>
                         {winner === localFaction ? "VICTORY ACHIEVED" : "CRITICAL DEFEAT"}
                     </h1>
-                    <p className="text-xl text-[#00FF41] mb-8 uppercase tracking-widest">
+                    <p style={{ fontSize: '2rem', color: '#33ff00', marginBottom: '30px', textTransform: 'uppercase', letterSpacing: '4px' }}>
                         {FACTIONS[winner]?.name} NOW CONTROLS ALL SECTORS.
                     </p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-8 py-3 border-2 border-[#00FF41] text-[#00FF41] hover:bg-[#00FF41] hover:text-black transition-colors font-bold tracking-widest"
+                        className="command-btn" style={{ width: 'auto', padding: '20px 40px' }}
                     >
                         [ INITIALIZE NEW OPERATION ]
                     </button>
                 </div>
             )}
-
-            <div style={{ marginTop: '20px', width: '100%', maxWidth: '600px', border: '1px dashed #33ff00', padding: '10px', background: '#000' }}>
-                {log.map((msg, i) => <div key={i} style={{ color: i === 0 ? '#33ff00' : '#555', fontFamily: 'VT323', fontSize: '1rem' }}>{msg}</div>)}
-            </div>
         </div>
     );
 };
 
 export default TacticalGame;
-
-
