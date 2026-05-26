@@ -4,7 +4,6 @@
     flex-direction: column;
     align-items: flex-start;
     padding-left: 40px;
-    /* <-- REDUCED to 40px so it fits nicely */
     gap: 20px;
     margin-top: 20px;
     width: 100%;

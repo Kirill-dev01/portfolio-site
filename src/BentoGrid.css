@@ -47,7 +47,6 @@
     grid-column: span 2;
     grid-row: span 2;
     background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
-    /* Soft watercolor feel */
 }
 
 .card-intro h2 {
