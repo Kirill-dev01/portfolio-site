@@ -1,5 +1,7 @@
 # 🖥️ Kirill_OS | Interactive Developer Portfolio
 
+**[🟢 Access Live Terminal Here](https://kirill-dev01.vercel.app)**
+
 Welcome to my interactive, terminal-themed developer portfolio. Built with React and Vite, this project operates like a retro operating system, with each individual sector featuring a completely unique visual design.
 
 ## 🚀 System Features
