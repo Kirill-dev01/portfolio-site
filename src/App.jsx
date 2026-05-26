@@ -40,10 +40,6 @@ const Typewriter = ({ text, delay = 0, speed = 40, randomBlink = false }) => {
         {displayText.split('').map((char, index) => {
           // Paced out the delays so letters don't all pop off at the exact same moment
           const blinkDelay = (index * 0.45) % 3.0;
-
-          // INCREASED MINIMUM BASE DURATION: 
-          // Changed base from 0.5s to 2.0s, and the variance multiplier up to 2.5s.
-          // This keeps the flicker rate slow, steady, and cinematic.
           const blinkDuration = 2.0 + ((index * 0.73) % 2.5);
 
           return (
@@ -356,7 +352,8 @@ const CurrentProjects = () => {
         id: 2, name: "NIHONGO_QUEST", tech: "Android Native", color: "#fecaca",
         rotate: "2deg", top: "18%", left: "65%",
         desc: "Comprehensive Japanese study guide application (N5-N1).",
-        stack: ["Kotlin 2.0 & Android SDK", "XML & Material Design", "Native SQLite (Offline)", "Text-to-Speech API"]
+        stack: ["Kotlin 2.0 & Android SDK", "XML & Material Design", "Native SQLite (Offline)", "Text-to-Speech API"],
+        url: "https://play.google.com/store/apps/details?id=com.nkdevworks.japanesestudyapp&hl=en"
       },
       {
         id: 3, name: "MY_MONEY_TRACKER", tech: "Android MVVM", color: "#bbf7d0",
@@ -395,12 +392,28 @@ const CurrentProjects = () => {
               onClick={() => toggleFlip(proj.id)}
             >
               <div className={`memo-inner ${flipped[proj.id] ? 'is-flipped' : ''}`}>
+
+                {/* FRONT OF CARD */}
                 <div className="memo-front" style={{ backgroundColor: proj.color }}>
                   <div className="memo-tape"></div>
                   <h3>{proj.name}</h3>
                   <span style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>[{proj.tech}]</span>
                   <p>{proj.desc}</p>
+
+                  {proj.url && (
+                    <div
+                      style={{ marginTop: '10px', fontSize: '0.9rem', color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Stops the card from flipping when you click the link
+                        window.open(proj.url, '_blank', 'noopener noreferrer');
+                      }}
+                    >
+                      Play Store ↗
+                    </div>
+                  )}
                 </div>
+
+                {/* BACK OF CARD */}
                 <div className="memo-back" style={{ backgroundColor: proj.color }}>
                   <div className="memo-tape"></div>
                   <h3>{proj.name}</h3>
@@ -409,6 +422,7 @@ const CurrentProjects = () => {
                     {proj.stack.map((item, index) => <li key={index}>{item}</li>)}
                   </ul>
                 </div>
+
               </div>
             </div>
           ))}
@@ -431,7 +445,6 @@ const CurrentProjects = () => {
     </div>
   );
 };
-
 
 const FinishedProjects = () => {
   const [activeCartridge, setActiveCartridge] = useState(null);
@@ -705,9 +718,13 @@ function App() {
       </button>
 
       <nav className="sidebar">
-        <h1 style={{ cursor: 'pointer' }} onClick={() => setCurrentView('HOME')}>
+        <h1 style={{ cursor: 'pointer', color: '#ffcc00' }} onClick={() => setCurrentView('HOME')}>
           <Typewriter text="SYS_MENU" delay={0} />
         </h1>
+
+        <button className="menu-button" onClick={() => setCurrentView('PORTFOLIO')}>
+          <Typewriter text="> MY PORTFOLIO" delay={500} />
+        </button>
         <button className="menu-button" onClick={() => setCurrentView('PORTFOLIO')}>
           <Typewriter text="> MY PORTFOLIO" delay={500} />
         </button>
@@ -718,7 +735,7 @@ function App() {
           <Typewriter text="> CURRENT PROJECTS" delay={1500} />
         </button>
         <button className="menu-button" onClick={() => setCurrentView('FINISHED_PROJECTS')}>
-          <Typewriter text="> FINISHED PROJECTS" delay={2000} />
+          <Typewriter text="> PROJECT ARCHIVE" delay={2000} />
         </button>
         <button className="menu-button" onClick={() => setCurrentView('ARCADE')}>
           <Typewriter text="> ARCADE (GAMES)" delay={2500} />

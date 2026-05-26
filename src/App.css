@@ -34,7 +34,7 @@ html {
 
 /* The Vertical Sidebar */
 .sidebar {
-  width: 250px;
+  width: 300px;
   border-right: 2px solid #33ff00;
   padding: 30px 20px;
   display: flex;
