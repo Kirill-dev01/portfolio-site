@@ -725,9 +725,6 @@ function App() {
         <button className="menu-button" onClick={() => setCurrentView('PORTFOLIO')}>
           <Typewriter text="> MY PORTFOLIO" delay={500} />
         </button>
-        <button className="menu-button" onClick={() => setCurrentView('PORTFOLIO')}>
-          <Typewriter text="> MY PORTFOLIO" delay={500} />
-        </button>
         <button className="menu-button" onClick={() => setCurrentView('NEWS')}>
           <Typewriter text="> TECH NEWS" delay={1000} />
         </button>
