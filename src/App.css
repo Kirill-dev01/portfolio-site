@@ -915,3 +915,225 @@ html {
   text-shadow: 0 0 10px #33ff00;
   font-weight: bold;
 }
+
+/* --- SYSTEM DAEMON CHATBOT --- */
+/* 1. Move the toggle button UP to clear the footer */
+.daemon-toggle-btn {
+  position: fixed;
+  bottom: 70px;
+  /* <--- Changed from 30px to 70px */
+  right: 30px;
+  background-color: #000;
+  color: #00eeff;
+  border: 1px solid #00eeff;
+  padding: 10px 15px;
+  font-family: monospace;
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s;
+  box-shadow: 0 0 10px rgba(0, 238, 255, 0.2);
+}
+
+.daemon-toggle-btn:hover {
+  background-color: #00eeff;
+  color: #000;
+  box-shadow: 0 0 20px rgba(0, 238, 255, 0.6);
+}
+
+/* 2. Spawn the window in the upper right instead of the bottom */
+.daemon-window {
+  position: fixed;
+  top: 100px;
+  /* <--- Changed from bottom: 80px to top: 100px */
+  right: 50px;
+  /* <--- Moved slightly inward */
+  width: 350px;
+  height: 450px;
+  background-color: #050505;
+  border: 2px solid #00eeff;
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
+  box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 238, 255, 0.2);
+}
+
+/* 3. Make the header look like a draggable handle */
+.daemon-header {
+  background-color: #00eeff;
+  color: #000;
+  font-family: monospace;
+  font-weight: bold;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  cursor: grab;
+  /* <--- ADDED THIS: Shows the grabby hand */
+}
+
+.daemon-header:active {
+  cursor: grabbing;
+  /* <--- ADDED THIS: Shows a closed hand when dragging */
+}
+
+.daemon-messages {
+  flex-grow: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.message-row {
+  display: flex;
+  line-height: 1.4;
+}
+
+.message-row.sys {
+  color: #00eeff;
+}
+
+.message-row.user {
+  color: #fff;
+}
+
+.message-prefix {
+  margin-right: 10px;
+  font-weight: bold;
+  opacity: 0.7;
+}
+
+.daemon-input-area {
+  display: flex;
+  border-top: 1px solid #333;
+  padding: 10px;
+  background-color: #000;
+}
+
+.input-prefix {
+  color: #fff;
+  font-family: monospace;
+  margin-right: 10px;
+  line-height: 1.5;
+}
+
+.daemon-input-area input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: monospace;
+  font-size: 1rem;
+  outline: none;
+}
+
+/* --- TERMINAL BLINK ANIMATION --- */
+.blink-text {
+  animation: sys-blink 1s step-end infinite;
+  opacity: 0.7;
+}
+
+@keyframes sys-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Hide hamburger button on desktop */
+.hamburger-btn {
+  display: none;
+}
+
+/* =========================================
+   MOBILE ADAPTATION PROTOCOL (Screens under 768px)
+   ========================================= */
+@media (max-width: 768px) {
+
+  .app-container {
+    flex-direction: column !important;
+  }
+
+  /* 1. Style and show the Hamburger Button */
+  .hamburger-btn {
+    display: block;
+    width: 100%;
+    background-color: #000;
+    color: #33ff00;
+    border: none;
+    border-bottom: 2px solid #33ff00;
+    padding: 15px;
+    font-family: monospace;
+    font-size: 1.1rem;
+    text-align: left;
+    cursor: pointer;
+    z-index: 1001;
+    /* Keeps it above everything */
+  }
+
+  .hamburger-btn:active {
+    background-color: #113311;
+  }
+
+  /* 2. Hide the actual menu by default on mobile */
+  .sys-menu {
+    display: none !important;
+    /* Force hide */
+    width: 100% !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 2px solid #33ff00;
+    background-color: #050505;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  /* 3. When the 'open' class is active, show the dropdown! */
+  .sys-menu.open {
+    display: flex !important;
+    animation: dropDown 0.2s ease-out;
+  }
+
+  /* Make the menu buttons larger for thumbs */
+  .sys-menu button {
+    padding: 15px 20px;
+    border-bottom: 1px solid #114411;
+    font-size: 1rem;
+  }
+
+  /* Chat window mobile lock (from previous step) */
+  .daemon-window {
+    width: 90vw !important;
+    height: 60vh !important;
+    top: auto !important;
+    left: 5vw !important;
+    bottom: 80px !important;
+    transform: none !important;
+  }
+
+  .daemon-toggle-btn {
+    bottom: 15px;
+    right: 15px;
+    padding: 12px 20px;
+  }
+}
+
+/* Quick animation for the dropdown effect */
+@keyframes dropDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

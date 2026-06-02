@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import TacticalGame from './components/games/TacticalGame';
+import SystemDaemon from './components/SystemDaemon';
 
 // =========================================
 // RETRO / TERMINAL COMPONENTS
@@ -173,10 +174,6 @@ const GitHubActivity = () => {
   );
 };
 
-// =======================
-// MODERN COMPONENTS 
-// =======================
-
 const PortfolioBento = ({ language = 'en' }) => {
   // --- FLIP ANIMATION STATE ---
   const [flipped, setFlipped] = useState({
@@ -193,13 +190,20 @@ const PortfolioBento = ({ language = 'en' }) => {
   const t = {
     en: {
       greeting: "Hello. I'm Kirill.",
-      bio: "I am a full-stack Python and mobile (Android) developer specializing in building robust applications and automating complex workflows. Currently, I am building my own projects and teaching myself Unity."
+      bio: "I am a full-stack Python and mobile (Android) developer. Currently, I am working on my own projects and I am completing a Python Full-Stack Developer online course at Netology (Russia) August 2026. You can check out my GitHub for the latest updates."
     },
     ja: {
       greeting: "こんにちは、キリルです。",
-      bio: "私は堅牢なアプリケーションの構築と複雑なワークフローの自動化を専門とする、フルスタックPythonおよびモバイル（Android）開発者です。現在は自身のプロジェクトを開発しながら、Unityを独学で学んでいます。"
+      bio: "私はフルスタックPythonおよびモバイル（Android）開発者です。現在は自身のプロジェクトに取り組む傍ら、ロシアのオンラインスクール「Netology」にてPythonフルスタック開発者コースを受講しており、2026年8月に修了予定です。最新の活動についてはGitHubをご覧ください。"
     }
   };
+
+  // Clean Light Blue background for the front of the cards
+  const frontCardStyle = { backgroundColor: '#dbeafe' };
+  // Black text override to kill the green neon glow
+  const blackTextOverride = { color: '#000', textShadow: 'none' };
+  const darkGraySubtext = { color: '#444', textShadow: 'none', fontWeight: 'bold' };
+
   return (
     <div className="bento-grid">
 
@@ -207,13 +211,12 @@ const PortfolioBento = ({ language = 'en' }) => {
       <div className="bento-wrapper bento-info" onClick={() => toggleFlip('info')}>
         <div className={`bento-inner ${flipped.info ? 'is-flipped' : ''}`}>
           {/* FRONT */}
-          <div className="bento-front">
-            <h2>[ INTRODUCTION ]</h2>
-            <div className="click-hint">ACCESS NODE</div>
+          <div className="bento-front" style={frontCardStyle}>
+            <h2 style={blackTextOverride}>[ INTRODUCTION ]</h2>
+            <div className="click-hint" style={darkGraySubtext}>ACCESS NODE</div>
           </div>
-          {/* BACK (Now with Translation Matrix active) */}
-          <div className="bento-back">
-            {/* Text swapped for dynamic translation variables */}
+          {/* BACK */}
+          <div className="bento-back" style={{ overflowY: 'auto' }}>
             <h2>{t[language].greeting}</h2>
             <p style={{ fontSize: '1.2rem', lineHeight: '1.6', color: '#555' }}>
               {t[language].bio}
@@ -226,10 +229,11 @@ const PortfolioBento = ({ language = 'en' }) => {
       <div className="bento-wrapper bento-stack" onClick={() => toggleFlip('stack')}>
         <div className={`bento-inner ${flipped.stack ? 'is-flipped' : ''}`}>
           {/* FRONT */}
-          <div className="bento-front">
-            <h2>[ CORE STACK ]</h2>
-            <div className="click-hint">ACCESS NODE</div>
+          <div className="bento-front" style={frontCardStyle}>
+            <h2 style={blackTextOverride}>[ CORE STACK ]</h2>
+            <div className="click-hint" style={darkGraySubtext}>ACCESS NODE</div>
           </div>
+          {/* BACK */}
           <div className="bento-back" style={{ overflowY: 'auto' }}>
             <h2>Core Stack</h2>
 
@@ -279,11 +283,12 @@ const PortfolioBento = ({ language = 'en' }) => {
       <div className="bento-wrapper bento-contacts" onClick={() => toggleFlip('contacts')}>
         <div className={`bento-inner ${flipped.contacts ? 'is-flipped' : ''}`}>
           {/* FRONT */}
-          <div className="bento-front">
-            <h2>[ COMM-LINK ]</h2>
-            <div className="click-hint">ACCESS NODE</div>
+          <div className="bento-front" style={frontCardStyle}>
+            <h2 style={blackTextOverride}>[ COMM-LINK ]</h2>
+            <div className="click-hint" style={darkGraySubtext}>ACCESS NODE</div>
           </div>
-          <div className="bento-back">
+          {/* BACK */}
+          <div className="bento-back" style={{ overflowY: 'auto' }}>
             <h2>Comm-Link</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
 
@@ -612,9 +617,18 @@ function App() {
   const [activeRoom, setActiveRoom] = useState(null);
   const [language, setLanguage] = useState('en');
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // --- 📡 MULTIPLAYER WEBSOCKET ENGINE ---
   const ws = useRef(null);
   const [isOnline, setIsOnline] = useState(false);
+
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+
+  const handleNavClick = (viewName) => {
+    setCurrentView(viewName);
+    setIsMobileMenuOpen(false); // Auto-close the menu after clicking
+  };
 
   useEffect(() => {
     let reconnectTimer;
@@ -717,25 +731,38 @@ function App() {
         [ {language === 'en' ? 'ENG / 日本語' : '日本語 / ENG'} ]
       </button>
 
-      <nav className="sidebar">
-        <h1 style={{ cursor: 'pointer', color: '#ffcc00' }} onClick={() => setCurrentView('HOME')}>
-          <Typewriter text="SYS_MENU" delay={0} />
+      {/* 👉 NEW: THE HAMBURGER BUTTON */}
+      <button
+        className="hamburger-btn"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? '[ X ] CLOSE MENU' : '[ ☰ ] SYS_MENU'}
+      </button>
+
+      {/* 👉 UPDATED: DYNAMIC CLASS AND handleNavClick */}
+      <nav className={`sidebar sys-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+        <h1 style={{ cursor: 'pointer', color: '#ffcc00' }} onClick={() => handleNavClick('HOME')}>
+          <Typewriter text={language === 'en' ? 'SYS_MENU' : 'システムメニュー'} delay={0} />
         </h1>
 
-        <button className="menu-button" onClick={() => setCurrentView('PORTFOLIO')}>
-          <Typewriter text="> MY PORTFOLIO" delay={500} />
+        <button className="menu-button" onClick={() => handleNavClick('PORTFOLIO')}>
+          <Typewriter text={language === 'en' ? '> MY PORTFOLIO' : '> ポートフォリオ'} delay={500} />
         </button>
-        <button className="menu-button" onClick={() => setCurrentView('NEWS')}>
-          <Typewriter text="> TECH NEWS" delay={1000} />
+
+        <button className="menu-button" onClick={() => handleNavClick('NEWS')}>
+          <Typewriter text={language === 'en' ? '> TECH NEWS' : '> テックニュース'} delay={1000} />
         </button>
-        <button className="menu-button" onClick={() => setCurrentView('CURRENT_PROJECTS')}>
-          <Typewriter text="> CURRENT PROJECTS" delay={1500} />
+
+        <button className="menu-button" onClick={() => handleNavClick('CURRENT_PROJECTS')}>
+          <Typewriter text={language === 'en' ? '> CURRENT PROJECTS' : '> 稼働中プロジェクト'} delay={1500} />
         </button>
-        <button className="menu-button" onClick={() => setCurrentView('FINISHED_PROJECTS')}>
-          <Typewriter text="> PROJECT ARCHIVE" delay={2000} />
+
+        <button className="menu-button" onClick={() => handleNavClick('FINISHED_PROJECTS')}>
+          <Typewriter text={language === 'en' ? '> PROJECT ARCHIVE' : '> 開発アーカイブ'} delay={2000} />
         </button>
-        <button className="menu-button" onClick={() => setCurrentView('ARCADE')}>
-          <Typewriter text="> ARCADE (GAMES)" delay={2500} />
+
+        <button className="menu-button" onClick={() => handleNavClick('ARCADE')}>
+          <Typewriter text={language === 'en' ? '> ARCADE (GAMES)' : '> アーケード（ゲーム）'} delay={2500} />
         </button>
       </nav>
 
@@ -744,7 +771,12 @@ function App() {
           <>
             <div className="image-placeholder" style={{ height: '200px' }}></div>
             <div className="os-title">
-              <Typewriter text="UNDER CONSTRUCTION" delay={500} speed={150} randomBlink={true} />
+              <Typewriter
+                text={language === 'en' ? 'UNDER CONSTRUCTION' : 'システム構築中'}
+                delay={500}
+                speed={150}
+                randomBlink={true}
+              />
             </div>
           </>
         )}
@@ -799,6 +831,9 @@ function App() {
           GitHub ↗
         </a>
       </footer>
+
+      <SystemDaemon language={language} />
+
 
     </div>
   );
