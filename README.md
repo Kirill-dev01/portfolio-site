@@ -5,10 +5,10 @@
 Welcome to my interactive, terminal-themed developer portfolio. Built with React and Vite, this project operates like a retro operating system, with each individual sector featuring a completely unique visual design.
 
 ## 🚀 System Features
-* **Retro Terminal UI:** A custom-built, matrix-style interface featuring a global bilingual toggle (ENG / 日本語).
+* **Retro Terminal UI:** A custom-built, game-style interface featuring a global bilingual toggle (ENG / 日本語).
 * **SYS_DAEMON Virtual Assistant:** An interactive, draggable system chatbot featuring context-aware responses, real-time bilingual translation, and an automated idle-detection engine to guide visitors.
-* **Interactive Bento Grid:** A 3D flipping dashboard to explore my core engineering stack (Python, Kotlin, Java, React).
-* **Project Logs:** A highly customized, interactive CSS "physical notebook" detailing active development directives and current focus areas.
+* **Interactive Bento Grid:** A 3D flipping dashboard featuring my introduction, direct comm-links, and core engineering stack (Python, Kotlin, Java, React).
+* **Project Logs:** Customized, interactive CSS "physical notebook" detailing active development directives and current focus areas.
 * **The Retro Console Archive:** An interactive sector for finished projects where users must physically "insert a game cartridge" into the console to load the project's data and deployment metrics.
 * **The Arcade Sector:** A built-in gaming center featuring a real-time, WebSocket-powered multiplayer tactical game connected to a dedicated asynchronous Python backend.
 
