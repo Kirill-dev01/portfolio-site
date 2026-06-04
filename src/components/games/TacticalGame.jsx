@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './TacticalGame.css';
 
-const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setActiveRoom }) => {
+const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setActiveRoom, language }) => {
     const GRID_SIZE = 15;
 
     const UPGRADE_COSTS = { 1: 300, 2: 500, 3: 800, 4: "MAX" };
@@ -658,71 +658,118 @@ const TacticalGame = ({ setCurrentView, transmitData, isOnline, activeRoom, setA
                     </div>
                 )}
 
-                <div style={{ background: '#111', border: '1px solid #33ff00', padding: '20px', width: '350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {/* 👉 THE NEW DUAL-COLUMN LAYOUT STARTS HERE */}
+                <div className="arcade-menu-layout">
 
-                    {gameState === 'WAITING_FOR_SYNC' ? (
-                        <div style={{ color: '#ffcc00', textAlign: 'center', padding: '20px 0' }}>
-                            <h3 style={{ margin: '0 0 10px 0' }}>[ SYNCHRONIZING ]</h3>
-                            {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
+                    {/* --- LEFT COLUMN (Controls) --- */}
+                    <div className="arcade-left-column">
+                        <div style={{ background: '#000000', border: '1px solid #33ff00', padding: '20px', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+
+                            {gameState === 'WAITING_FOR_SYNC' ? (
+                                <div style={{ color: '#ffcc00', textAlign: 'center', padding: '20px 0' }}>
+                                    <h3 style={{ margin: '0 0 10px 0' }}>[ SYNCHRONIZING ]</h3>
+                                    {!isOnline && <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '10px' }}>Booting satellite uplink...<br />(May take up to 50s if servers are asleep)</p>}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* --- SINGLE PLAYER PANEL --- */}
+                                    <div style={{ background: '#000000', padding: '15px', border: '1px solid #33ff00', marginBottom: '15px' }}>
+                                        <h3 style={{ color: '#33ff00', marginTop: 0, borderBottom: '1px dashed #33ff00', paddingBottom: '5px' }}>[ SINGLE PLAYER ]</h3>
+
+                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>TOTAL FACTIONS:</label>
+                                        <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%', marginBottom: '15px' }}>
+                                            <option value={2}>1v1 (2 FACTIONS)</option>
+                                            <option value={3}>1v2 (3 FACTIONS)</option>
+                                            <option value={4}>1v3 (4 FACTIONS)</option>
+                                        </select>
+
+                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>AI DIFFICULTY:</label>
+                                        <select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%', marginBottom: '20px' }}>
+                                            <option value="EASY">EASY</option>
+                                            <option value="NORMAL">NORMAL</option>
+                                            <option value="HARD">HARD</option>
+                                        </select>
+
+                                        <button className="game-btn" style={{ width: '100%' }} onClick={startSinglePlayer}>[ LAUNCH LOCAL OPERATION ]</button>
+                                    </div>
+
+                                    {/* --- MULTIPLAYER PANEL --- */}
+                                    <div style={{ background: '#000000', padding: '15px', border: '1px solid #33ff00', marginBottom: '10px' }}>
+                                        <h3 style={{ color: '#33ff00', marginTop: 0, borderBottom: '1px dashed #33ff00', paddingBottom: '5px' }}>[ MULTIPLAYER ]</h3>
+
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>FACTIONS:</label>
+                                                <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%' }}>
+                                                    <option value={2}>2</option>
+                                                    <option value={3}>3</option>
+                                                    <option value={4}>4</option>
+                                                </select>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>HUMANS:</label>
+                                                <select value={Math.max(2, setupConfig.humans)} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%' }}>
+                                                    {[...Array(setupConfig.totalPlayers)].map((_, i) => {
+                                                        if (i + 1 >= 2) return <option key={i + 1} value={i + 1}>{i + 1}</option>;
+                                                        return null;
+                                                    })}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <button className="game-btn" style={{ width: '100%', marginBottom: '15px' }} onClick={hostMultiplayer}>[ HOST SECURE LOBBY ]</button>
+
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="ENTER OP-CODE"
+                                                value={joinCodeInput}
+                                                onChange={(e) => setJoinCodeInput(e.target.value)}
+                                                style={{ background: '#000000', color: '#33ff00', border: '1px solid #33ff00', padding: '12px', width: '60%', fontFamily: "'VT323', monospace", fontSize: '1.2rem', textTransform: 'uppercase' }}
+                                            />
+                                            <button className="game-btn" style={{ width: '40%' }} onClick={joinPrivate}>[ JOIN ]</button>
+                                        </div>
+                                    </div>
+
+                                    <button className="game-btn" style={{ borderColor: '#555', color: '#555', marginTop: '10px', width: '100%' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
+                                </>
+                            )}
                         </div>
-                    ) : (
-                        <>
-                            {/* --- SINGLE PLAYER PANEL --- */}
-                            <div style={{ background: '#050505', padding: '15px', border: '1px solid #33ff00', marginBottom: '15px' }}>
-                                <h3 style={{ color: '#33ff00', marginTop: 0, borderBottom: '1px dashed #33ff00', paddingBottom: '5px' }}>[ SINGLE PLAYER ]</h3>
+                    </div>
+                    {/* --- RIGHT COLUMN (Game Rules) --- */}
+                    <div className="arcade-right-column">
+                        <div className="game-rules-panel">
+                            <h3>{language === 'ja' ? '[ ゲームルール ]' : '[ Game rules ]'}</h3>
+                            <ul>
+                                <li>
+                                    <span className="highlight-text">{language === 'ja' ? '目的:' : 'OBJECTIVE:'}</span>
+                                    {language === 'ja'
+                                        ? ' 支配を確立せよ。部隊を指揮し、マップからすべての敵ユニットと勢力を排除しろ。敵の基地を占領するには、ユニットが基地上に3ターン連続で留まる必要がある。'
+                                        : ' Establish dominance. Command your forces to eliminate all enemy units and factions from the map. To capture an enemy base, your unit needs to spend 3 consecutive turns on it.'}
+                                </li>
+                                <li>
+                                    <span className="highlight-text">{language === 'ja' ? '経済:' : 'ECONOMY:'}</span>
+                                    {language === 'ja'
+                                        ? ' 地域の資源ノードを確保して、高度なユニットの建設資金を調達し、自軍の拠点を拡大しろ。'
+                                        : ' Secure local resource nodes to fund the construction of advanced units and expand your base footprint.'}
+                                </li>
+                                <li>
+                                    <span className="highlight-text">{language === 'ja' ? '戦術:' : 'TACTICS:'}</span>
+                                    {language === 'ja'
+                                        ? ' 地形の利点を活かし、厳密な部隊編成を維持して敵を出し抜け。'
+                                        : ' Utilize different terrain types to gain advantages over the opposition.'}
+                                </li>
+                                {/* 👉 NEW SERVER WARNING BULLET POINT */}
+                                <li>
+                                    <span className="highlight-text">{language === 'ja' ? '通信確立:' : 'UPLINK:'}</span>
+                                    {language === 'ja'
+                                        ? ' バックエンドサーバーがスリープ状態から起動するため、マッチの初期化に約30〜50秒かかる場合がある。そのまま待機しろ。'
+                                        : ' Match initialization may take 30-50 seconds while the backend server boots up from sleep mode. Please stand by.'}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
 
-                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>TOTAL FACTIONS:</label>
-                                <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%', marginBottom: '10px' }}>
-                                    <option value={2}>1v1 (2 FACTIONS)</option>
-                                    <option value={3}>1v2 (3 FACTIONS)</option>
-                                    <option value={4}>1v3 (4 FACTIONS)</option>
-                                </select>
-
-                                <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>AI DIFFICULTY:</label>
-                                <select value={setupConfig.difficulty} onChange={(e) => setSetupConfig({ ...setupConfig, difficulty: e.target.value })} className="game-btn" style={{ width: '100%', marginBottom: '15px' }}>
-                                    <option value="EASY">EASY</option>
-                                    <option value="NORMAL">NORMAL</option>
-                                    <option value="HARD">HARD</option>
-                                </select>
-
-                                <button className="game-btn" style={{ borderColor: '#33ff00', color: '#33ff00', width: '100%' }} onClick={startSinglePlayer}>[ LAUNCH LOCAL OPERATION ]</button>
-                            </div>
-
-                            {/* --- MULTIPLAYER PANEL --- */}
-                            <div style={{ background: '#050505', padding: '15px', border: '1px solid #00eeff', marginBottom: '10px' }}>
-                                <h3 style={{ color: '#00eeff', marginTop: 0, borderBottom: '1px dashed #00eeff', paddingBottom: '5px' }}>[ MULTIPLAYER ]</h3>
-
-                                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>FACTIONS:</label>
-                                        <select value={setupConfig.totalPlayers} onChange={(e) => setSetupConfig({ ...setupConfig, totalPlayers: parseInt(e.target.value), humans: Math.min(setupConfig.humans, parseInt(e.target.value)) })} className="game-btn" style={{ width: '100%' }}>
-                                            <option value={2}>2</option>
-                                            <option value={3}>3</option>
-                                            <option value={4}>4</option>
-                                        </select>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ color: '#aaa', display: 'block', fontSize: '0.9rem' }}>HUMANS:</label>
-                                        <select value={Math.max(2, setupConfig.humans)} onChange={(e) => setSetupConfig({ ...setupConfig, humans: parseInt(e.target.value) })} className="game-btn" style={{ width: '100%' }}>
-                                            {[...Array(setupConfig.totalPlayers)].map((_, i) => {
-                                                if (i + 1 >= 2) return <option key={i + 1} value={i + 1}>{i + 1}</option>;
-                                                return null;
-                                            })}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <button className="game-btn" style={{ borderColor: '#00eeff', color: '#00eeff', width: '100%', marginBottom: '15px' }} onClick={hostMultiplayer}>[ HOST SECURE LOBBY ]</button>
-
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <input type="text" placeholder="ENTER OP-CODE" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value)} style={{ background: '#000', color: '#00eeff', border: '1px solid #555', padding: '10px', width: '60%', fontFamily: "'VT323', monospace", fontSize: '1.2rem', textTransform: 'uppercase' }} />
-                                    <button className="game-btn" style={{ width: '40%', padding: '10px 0', borderColor: '#00eeff', color: '#00eeff' }} onClick={joinPrivate}>[ JOIN ]</button>
-                                </div>
-                            </div>
-
-                            <button className="game-btn" style={{ borderColor: '#555', color: '#555', marginTop: '10px', width: '100%' }} onClick={() => setCurrentView('ARCADE')}>CANCEL</button>
-                        </>
-                    )}
                 </div>
             </div>
         );

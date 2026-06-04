@@ -583,23 +583,23 @@ const FinishedProjects = () => {
 
 const ArcadeMenu = ({ setCurrentView }) => {
   return (
-    // This wrapper uses flexbox to perfectly center everything in the middle of the screen
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', width: '100%' }}>
 
       <div className="os-title" style={{ marginBottom: '60px', textAlign: 'center' }}>
-        <Typewriter text="ENTERTAINMENT_SYSTEM // ONLINE" speed={50} />
+        {/* Assuming you have your Typewriter component imported/available here */}
+        <span>ENTERTAINMENT_SYSTEM // ONLINE</span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '25px', alignItems: 'center' }}>
 
         {/* --- GAME 01 --- */}
         <button className="arcade-button" onClick={() => setCurrentView('GAME_TACTICAL')}>
-          <Typewriter text="[01] TACTICAL_STRIKE (Turn-Based)" delay={200} />
+          <span>[01] TACTICAL_STRIKE (Turn-Based)</span>
         </button>
 
         {/* --- GAME 02 (IN DEV) --- */}
         <button className="arcade-button locked" disabled>
-          <Typewriter text="[02] NEW GAME (In Development)" delay={800} />
+          <span>[02] NEW GAME (In Development)</span>
         </button>
 
       </div>
@@ -811,6 +811,7 @@ function App() {
               isOnline={isOnline}
               activeRoom={activeRoom}
               setActiveRoom={setActiveRoom}
+              language={language}
             />
           </div>
         )}
