@@ -23,13 +23,12 @@ const AiRtsBattle = () => {
     });
 
     useEffect(() => {
-        // Automatically switch between local testing and live production URLs
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'localhost:8000'
-            : window.location.host;
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-        const wsUrl = `${protocol}//${host}/ws/laboratory`;
+        // 2. Point to the correct server based on the location
+        const wsUrl = isLocal
+            ? 'ws://localhost:8000/ws/rts-game'
+            : 'wss://tactical-multiplayer-server.onrender.com/ws/rts-game';
 
         // Initialize connection
         socketRef.current = new WebSocket(wsUrl);
@@ -49,6 +48,7 @@ const AiRtsBattle = () => {
             }
         };
 
+        // Clean up connection on unmount
         return () => {
             if (socketRef.current) socketRef.current.close();
         };
