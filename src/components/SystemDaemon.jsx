@@ -5,12 +5,11 @@ const SystemDaemon = ({ language }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [hasPromptedIdle, setHasPromptedIdle] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     const [messages, setMessages] = useState([
         { sender: 'sys', text: 'SYS_DAEMON V1.0 INITIALIZED.' },
-        { sender: 'sys', text: 'WELCOME, STRANGER. ARE YOU READY TO EXPLORE THE SYSTEM AND PLAY SOME GAMES IN THE ARCADE?' }
+        { sender: 'sys', text: 'WELCOME, TRAVELER. ARE YOU READY TO EXPLORE THE SYSTEM AND PLAY SOME GAMES IN THE ARCADE?' }
     ]);
 
     const messagesEndRef = useRef(null);
@@ -40,42 +39,6 @@ const SystemDaemon = ({ language }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    useEffect(() => {
-        let idleTimer;
-        const resetIdleTimer = () => {
-            clearTimeout(idleTimer);
-            if (!hasPromptedIdle) {
-                idleTimer = setTimeout(() => {
-                    setIsOpen(true);
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            sender: 'sys',
-                            text: language === 'ja'
-                                ? "システム待機状態を検出しました。アーケードセクターでゲームをしましょう。ここで待っているとトランジスタが錆びてしまいます。"
-                                : "SYSTEM IDLE DETECTED. LET'S GO PLAY SOME GAMES IN THE ARCADE SECTOR. MY TRANSISTORS ARE GETTING RUSTY WAITING HERE."
-                        }
-                    ]);
-                    setHasPromptedIdle(true);
-                }, 120000);
-            }
-        };
-
-        window.addEventListener('mousemove', resetIdleTimer);
-        window.addEventListener('keydown', resetIdleTimer);
-        window.addEventListener('click', resetIdleTimer);
-        window.addEventListener('scroll', resetIdleTimer);
-
-        resetIdleTimer();
-
-        return () => {
-            clearTimeout(idleTimer);
-            window.removeEventListener('mousemove', resetIdleTimer);
-            window.removeEventListener('keydown', resetIdleTimer);
-            window.removeEventListener('click', resetIdleTimer);
-            window.removeEventListener('scroll', resetIdleTimer);
-        };
-    }, [hasPromptedIdle, language]); // Added language to dependency array
 
     // --- BILINGUAL BOT BRAIN ---
     const generateResponse = (input) => {

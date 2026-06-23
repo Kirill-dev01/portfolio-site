@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import TacticalGame from './components/games/TacticalGame';
 import SystemDaemon from './components/SystemDaemon';
+import AiRtsBattle from './components/AiRtsBattle';
 
 // =========================================
 // RETRO / TERMINAL COMPONENTS
@@ -586,7 +587,6 @@ const ArcadeMenu = ({ setCurrentView }) => {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', width: '100%' }}>
 
       <div className="os-title" style={{ marginBottom: '60px', textAlign: 'center' }}>
-        {/* Assuming you have your Typewriter component imported/available here */}
         <span>ENTERTAINMENT_SYSTEM // ONLINE</span>
       </div>
 
@@ -597,9 +597,14 @@ const ArcadeMenu = ({ setCurrentView }) => {
           <span>[01] TACTICAL_STRIKE (Turn-Based)</span>
         </button>
 
-        {/* --- GAME 02 (IN DEV) --- */}
+        {/* --- GAME 02: RTS AI BATTLE --- */}
+        <button className="arcade-button" onClick={() => setCurrentView('GAME_RTS_BATTLE')}>
+          <span>[02] RTS AI BATTLE (Simulation)</span>
+        </button>
+
+        {/* --- GAME 03 (IN DEV) --- */}
         <button className="arcade-button locked" disabled>
-          <span>[02] NEW GAME (In Development)</span>
+          <span>[03] NEW GAME (In Development)</span>
         </button>
 
       </div>
@@ -666,7 +671,7 @@ function App() {
         ws.current.onerror = (err) => {
           if (!isComponentMounted) return;
           console.error("SYS: WebSocket error detected.", err);
-          ws.current.close(); // Force the socket to close so the auto-reconnect triggers!
+          ws.current.close(); // Force the socket to close so the auto-reconnect triggers
         };
       }
     };
@@ -731,7 +736,7 @@ function App() {
         [ {language === 'en' ? 'ENG / 日本語' : '日本語 / ENG'} ]
       </button>
 
-      {/* 👉 NEW: THE HAMBURGER BUTTON */}
+      {/* THE HAMBURGER BUTTON */}
       <button
         className="hamburger-btn"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -739,7 +744,6 @@ function App() {
         {isMobileMenuOpen ? '[ X ] CLOSE MENU' : '[ ☰ ] SYS_MENU'}
       </button>
 
-      {/* 👉 UPDATED: DYNAMIC CLASS AND handleNavClick */}
       <nav className={`sidebar sys-menu ${isMobileMenuOpen ? 'open' : ''}`}>
         <h1 style={{ cursor: 'pointer', color: '#ffcc00' }} onClick={() => handleNavClick('HOME')}>
           <Typewriter text={language === 'en' ? 'SYS_MENU' : 'システムメニュー'} delay={0} />
@@ -788,10 +792,36 @@ function App() {
           </div>
         )}
 
+        {/* ARCADE MENU */}
         {currentView === 'ARCADE' && <ArcadeMenu setCurrentView={setCurrentView} />}
 
+        {/* RTS AI BATTLE RENDER BLOCK */}
+        {currentView === 'GAME_RTS_BATTLE' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid #00eeff' }}>
+              <button
+                onClick={() => setCurrentView('ARCADE')}
+                style={{ background: 'transparent', color: '#00eeff', border: 'none', cursor: 'pointer', fontFamily: 'monospace' }}
+              >
+                {'< RETURN TO ARCADE'}
+              </button>
+            </div>
+            <AiRtsBattle />
+          </div>
+        )}
+
+        {/* TACTICAL STRIKE RENDER BLOCK */}
         {currentView === 'GAME_TACTICAL' && (
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid #33ff00' }}>
+              <button
+                onClick={() => setCurrentView('ARCADE')}
+                style={{ background: 'transparent', color: '#33ff00', border: 'none', cursor: 'pointer', fontFamily: 'monospace' }}
+              >
+                {'< RETURN TO ARCADE'}
+              </button>
+            </div>
+
             {/* NETWORK STATUS BAR */}
             <div style={{ padding: '10px', background: '#111', borderBottom: '1px solid #33ff00', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontFamily: 'monospace', fontSize: '1.2rem' }}>
@@ -841,3 +871,5 @@ function App() {
 }
 
 export default App;
+
+

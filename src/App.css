@@ -82,6 +82,8 @@ html {
   align-items: flex-start;
 
   padding-top: 60px;
+  padding-bottom: 90px;
+
   position: relative;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   background-size: 100% 4px, 3px 100%;
@@ -1052,91 +1054,6 @@ html {
   display: none;
 }
 
-/* =========================================
-   MOBILE ADAPTATION PROTOCOL (Screens under 768px)
-   ========================================= */
-@media (max-width: 768px) {
-
-  .app-container {
-    flex-direction: column !important;
-  }
-
-  /* 1. Style and show the Hamburger Button */
-  .hamburger-btn {
-    display: block;
-    width: 100%;
-    background-color: #000;
-    color: #33ff00;
-    border: none;
-    border-bottom: 2px solid #33ff00;
-    padding: 15px;
-    font-family: monospace;
-    font-size: 1.1rem;
-    text-align: left;
-    cursor: pointer;
-    z-index: 1001;
-    /* Keeps it above everything */
-  }
-
-  .hamburger-btn:active {
-    background-color: #113311;
-  }
-
-  /* 2. Hide the actual menu by default on mobile */
-  .sys-menu {
-    display: none !important;
-    /* Force hide */
-    width: 100% !important;
-    height: auto !important;
-    border-right: none !important;
-    border-bottom: 2px solid #33ff00;
-    background-color: #050505;
-    flex-direction: column;
-    padding: 0;
-  }
-
-  /* 3. When the 'open' class is active, show the dropdown! */
-  .sys-menu.open {
-    display: flex !important;
-    animation: dropDown 0.2s ease-out;
-  }
-
-  /* Make the menu buttons larger for thumbs */
-  .sys-menu button {
-    padding: 15px 20px;
-    border-bottom: 1px solid #114411;
-    font-size: 1rem;
-  }
-
-  /* Chat window mobile lock (from previous step) */
-  .daemon-window {
-    width: 90vw !important;
-    height: 60vh !important;
-    top: auto !important;
-    left: 5vw !important;
-    bottom: 80px !important;
-    transform: none !important;
-  }
-
-  .daemon-toggle-btn {
-    bottom: 15px;
-    right: 15px;
-    padding: 12px 20px;
-  }
-}
-
-/* Quick animation for the dropdown effect */
-@keyframes dropDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 /* =========================================
    ARCADE MENU LAYOUT
@@ -1199,4 +1116,150 @@ html {
 .highlight-text {
   color: #ffcc00;
   font-weight: bold;
+}
+
+
+/* ========================================= */
+/* --- AI BATTLE STYLES -- */
+/* ========================================= */
+
+.laboratory-wrapper {
+  /* Slow-moving premium gradient background */
+  background: linear-gradient(-45deg, #050510, #0a1128, #111a3a, #050510);
+  background-size: 400% 400%;
+  animation: smoothGradient 15s ease infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+}
+
+@keyframes smoothGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.glass-panel {
+  /* The frosted glass effect */
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.canvas-container {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Puts the game and the info box side by side AND fixes the overlap */
+.simulation-workspace {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 30px;
+  width: 100%;
+
+  margin-bottom: 150px;
+}
+
+.tactical-intel-panel {
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid #33ff00;
+  border-radius: 8px;
+  padding: 20px 25px;
+  width: 350px;
+  font-family: 'VT323', monospace;
+  box-shadow: 0 0 15px rgba(51, 255, 0, 0.15);
+
+  text-align: center;
+}
+
+.panel-title {
+  color: #33ff00;
+  font-size: 2.2rem;
+  margin: 0 0 20px 0;
+  letter-spacing: 1px;
+  border-bottom: 1px dashed #33ff00;
+  padding-bottom: 10px;
+
+  text-align: center;
+}
+
+.panel-desc {
+  color: #888;
+  font-size: 0.95rem;
+  margin: 0 0 20px 0;
+  border-bottom: 1px dashed #33ff00;
+  padding-bottom: 10px;
+}
+
+.faction-intel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.intel-item {
+  margin-bottom: 10px;
+}
+
+.intel-item h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.5px;
+}
+
+.intel-item p {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+/* Custom Text Colors for Faction Items */
+.red-faction h4 {
+  color: #ff3333;
+}
+
+.yellow-faction h4 {
+  color: #ffff33;
+}
+
+.cyan-color h4 {
+  color: #33ffff;
+}
+
+.green-color h4 {
+  color: #33ff33;
+}
+
+/* Responsive adjustments if the zoom changes too much */
+@media (max-width: 1100px) {
+  .simulation-workspace {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tactical-intel-panel {
+    width: 500px;
+  }
 }
